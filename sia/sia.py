@@ -398,7 +398,10 @@ class Sia:
         twitter_thread.join()
 
     def run_telegram(self):
-        asyncio.run(self.telegram.run())
+        if self.telegram:
+            asyncio.run(self.telegram.run())
+        else:
+            log_message(self.logger, "info", self, f"Telegram client not found")
 
     def run_twitter(self):
         asyncio.run(self.twitter.run())
