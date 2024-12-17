@@ -254,10 +254,12 @@ class SiaTwitterOfficial(SiaClient):
             except Exception as e:
                 print(f"Error adding message: {e}")
                 try:
-                    messages_in_db = self.memory.get_messages(id=str(tweet.id))
-                    if messages_in_db:
+                    message_in_db = self.memory.get_messages(id=str(tweet.id))
+                    message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id))
+                    # only add to return if we haven't responded to this tweet yet
+                    if message_in_db and not message_responses_in_db:
                         log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
-                        messages.append(messages_in_db[0])
+                        messages.append(message_in_db[0])
                     else:
                         log_message(self.logger, "info", self, f"Message with id {tweet.id} not found in the database")
                         continue
