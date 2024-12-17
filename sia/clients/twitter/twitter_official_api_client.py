@@ -370,7 +370,7 @@ class SiaTwitterOfficial(SiaClient):
                     if ref_tweet_data:
                         ref_author = next((user for user in tweets.includes['users'] if user.id == ref_tweet_data.author_id), None)
                         ref_author_name = ref_author.name if ref_author else "Unknown"
-                        output_str += self.printable_tweet(tweet_id=ref_tweet_id, author_name=ref_author_name, created_at=ref_tweet_data.created_at, text=ref_tweet_data.text, public_metrics=ref_tweet_data.public_metrics)
+                        output_str += self.printable_tweet(tweet_id=ref_tweet_id, author_username=ref_author_name, created_at=ref_tweet_data.created_at, text=ref_tweet_data.text, public_metrics=ref_tweet_data.public_metrics)
 
             output_str += self.printable_tweet(tweet_id=tweet_id, author_username=author_username, created_at=tweet.created_at, text=tweet.text, public_metrics=tweet.public_metrics)
             
@@ -465,15 +465,15 @@ class SiaTwitterOfficial(SiaClient):
         # check when we last engaged
         #   and if it's time to engage again
         
-        messages_to_engage = self.memory.get_messages(
+        messages_to_engage_in_db = self.memory.get_messages(
             platform="twitter",
             character=self.character.name,
             exclude_own_conversations=True,
             sort_by="wen_posted",
             sort_order="desc"
         )
-        if messages_to_engage:
-            latest_message = messages_to_engage[0]
+        if messages_to_engage_in_db:
+            latest_message = messages_to_engage_in_db[0]
             next_time_to_engage = latest_message.wen_posted + timedelta(hours=search_frequency)
             time_to_engage = datetime.now() > next_time_to_engage
             if not time_to_engage and not self.testing:
