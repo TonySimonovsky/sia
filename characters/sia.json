@@ -155,10 +155,28 @@
     "platform_settings": {
         "twitter": {
             "enabled": true,
+            "username": "sia_really",
             "post_frequency": 2,
-            "username": "sia_really"
+            "post": {
+                "enabled": false,
+                "post_frequency": 2,
+                "post_parameters": {
+                    "length_ranges": ["1-5", "10-15", "20-30"]
+                }
+            },
+            "respond": {
+                "enabled": false
+            },
+            "engage": {
+                "enabled": true,
+                "search_frequency": 2,
+                "search_queries": [
+                    "from:ValueTokenized -is:reply"
+                ]
+            }
         },
         "telegram": {
+            "enabled": true,
             "post_frequency": 2,
             "chat_id": "-1002312730638",
             "username": "realsia_bot"

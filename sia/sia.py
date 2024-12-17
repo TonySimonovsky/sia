@@ -39,12 +39,14 @@ class Sia:
         telegram_creds = None,
         plugins = [],
         knowledge_module_classes = [],
-        logging_enabled=True
+        logging_enabled=True,
+        testing=False
     ):
+        self.testing = testing
         self.character = SiaCharacter(json_file=character_json_filepath, sia=self)
         self.memory = SiaMemory(character=self.character, db_path=memory_db_path)
         self.clients = clients
-        self.twitter = SiaTwitterOfficial(sia=self, **twitter_creds) if twitter_creds else None
+        self.twitter = SiaTwitterOfficial(sia=self, **twitter_creds, testing=self.testing) if twitter_creds else None
         self.telegram = SiaTelegram(sia=self, **telegram_creds, chat_id=self.character.platform_settings.get("telegram", {}).get("chat_id", None)) if telegram_creds else None
         self.twitter.character = self.character
         self.twitter.memory = self.memory
