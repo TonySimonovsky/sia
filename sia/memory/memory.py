@@ -25,12 +25,12 @@ class SiaMemory:
         session = self.Session()
 
         message_model = SiaMessageModel(
-            id=message_id,
+            id=str(message_id),
             platform=message.platform,
             character=message.character,
             author=message.author,
             content=message.content,
-            conversation_id=message.conversation_id,
+            conversation_id=message.conversation_id or message.id,
             response_to=message.response_to,
             flagged=message.flagged,
             message_metadata=message.message_metadata,
@@ -59,7 +59,7 @@ class SiaMemory:
             session.close()
         
 
-    def get_messages(self, id=None, platform: str = None, author: str = None, not_author: str = None, character: str = None, conversation_id: str = None, flagged: bool = False, sort_by: str = None, sort_order: str = "asc", is_post: bool = None, from_datetime=None):
+    def get_messages(self, id=None, platform: str = None, author: str = None, not_author: str = None, character: str = None, conversation_id: str = None, flagged: bool = False, sort_by: str = None, sort_order: str = "asc", is_post: bool = None, from_datetime=None, exclude_own_conversations: bool = False):
         session = self.Session()
         query = session.query(SiaMessageModel)
         if id:
@@ -76,6 +76,22 @@ class SiaMemory:
             query = query.filter_by(conversation_id=conversation_id)
         if from_datetime:
             query = query.filter(SiaMessageModel.wen_posted >= from_datetime)
+
+        # Exclude messages from conversations that we initiated
+        if exclude_own_conversations:
+            # Get conversation_ids where we were the initial poster
+            our_initiated_conversations = session.query(SiaMessageModel.conversation_id).filter(
+                and_(
+                    SiaMessageModel.author == self.character.twitter_username,
+                    SiaMessageModel.id == SiaMessageModel.conversation_id  # This identifies the initial post
+                )
+            ).distinct().subquery()
+            
+            # Then exclude messages from these conversations
+            query = query.filter(
+                ~SiaMessageModel.conversation_id.in_(our_initiated_conversations)
+            )
+            
         # if is_post is not None:
         if is_post:
             # For posts: id matches conversation_id or conversation_id is None
@@ -83,13 +99,9 @@ class SiaMemory:
                 SiaMessageModel.id == SiaMessageModel.conversation_id,
                 SiaMessageModel.conversation_id == None
             ))
-            # else:
-            #     # For responses: id does not match conversation_id and conversation_id is not None
-            #     query = query.filter(and_(
-            #         SiaMessageModel.id != SiaMessageModel.conversation_id,
-            #         SiaMessageModel.conversation_id != None
-            #     ))
+
         query = query.filter_by(flagged=flagged)
+
         if sort_by:
             if sort_order == "asc":
                 query = query.order_by(asc(sort_by))
