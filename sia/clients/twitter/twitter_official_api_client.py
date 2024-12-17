@@ -247,11 +247,12 @@ class SiaTwitterOfficial(SiaClient):
                     message_to_add.flagged = 1
                     message_to_add.message_metadata = { "flagged": "test_data" }
 
-                message_in_db = self.memory.add_message(message_id=message_to_add.id, message=message_to_add)
+                message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
 
                 messages.append(message_in_db)
                 
             except Exception as e:
+                print(f"Error adding message: {e}")
                 try:
                     messages_in_db = self.memory.get_messages(id=str(tweet.id))
                     if messages_in_db:
@@ -451,7 +452,7 @@ class SiaTwitterOfficial(SiaClient):
 
 
 
-    def engage(self, testing_rounds=3, search_period_hours=1):
+    def engage(self, testing_rounds=3, search_period_hours=10):
         
         # do not do anything
         #   if engagement is not enabled
@@ -489,9 +490,15 @@ class SiaTwitterOfficial(SiaClient):
             testing_rounds = 1
         for i in range(testing_rounds):
 
-            # Calculate time window for this round
-            end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
-            start_time = end_time - timedelta(hours=search_period_hours)
+            # # Calculate time window for this round
+            # end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
+            # start_time = end_time - timedelta(hours=search_period_hours)
+
+            start_time = (datetime.now(timezone.utc) - timedelta(hours=search_frequency*i+24)).isoformat()
+            end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i)
+
+
+            print(f"start_time: {start_time}, end_time: {end_time}")
 
             # search for tweets to engage with
             tweets_to_engage = []
