@@ -495,7 +495,7 @@ class SiaTwitterOfficial(SiaClient):
             # start_time = end_time - timedelta(hours=search_period_hours)
 
             start_time = (datetime.now(timezone.utc) - timedelta(hours=search_frequency*i+24)).isoformat()
-            end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i)
+            end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
 
 
             print(f"start_time: {start_time}, end_time: {end_time}")
