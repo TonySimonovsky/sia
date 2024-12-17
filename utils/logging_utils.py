@@ -31,7 +31,7 @@ def setup_logging(logger_name='step_by_step', logs_folder="logs/", log_filename=
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
 
-    disable_all_loggers_except(['step_by_step','speed'])
+    disable_all_loggers_except(['step_by_step','speed','testing'])
 
     return logger
 
