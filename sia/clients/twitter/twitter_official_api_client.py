@@ -472,12 +472,15 @@ class SiaTwitterOfficial(SiaClient):
             sort_by="wen_posted",
             sort_order="desc"
         )
-        latest_message = messages_to_engage[0]
-        next_time_to_engage = latest_message.wen_posted + timedelta(hours=search_frequency)
-        time_to_engage = datetime.now() > next_time_to_engage
-        if not time_to_engage and not self.testing:
-            log_message(self.logger, "info", self, f"Not the time to engage yet")
-            return
+        if messages_to_engage:
+            latest_message = messages_to_engage[0]
+            next_time_to_engage = latest_message.wen_posted + timedelta(hours=search_frequency)
+            time_to_engage = datetime.now() > next_time_to_engage
+            if not time_to_engage and not self.testing:
+                log_message(self.logger, "info", self, f"Not the time to engage yet")
+                return
+        else:
+            time_to_engage = 1
 
 
         # if we are not in testing mode, we will only do one round,
