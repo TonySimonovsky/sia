@@ -401,7 +401,8 @@ class Sia:
         if self.telegram:
             asyncio.run(self.telegram.run())
         else:
-            log_message(self.logger, "info", self, f"Telegram client not found")
+            while True:
+                time.sleep(1)
 
     def run_twitter(self):
         asyncio.run(self.twitter.run())
