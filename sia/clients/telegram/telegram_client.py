@@ -162,42 +162,49 @@ class SiaTelegram(SiaClient):
     async def run(self):
 
         conflict_wait_time = 10
+        
+        if self.sia.character.platform_settings.get("telegram", {}).get("enabled", False):
 
-        while True:
-            try:
-                # Add handlers to the application
-                self.application.add_handler(CommandHandler("start", self.start))
-                self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+            while True:
+                try:
+                    # Add handlers to the application
+                    self.application.add_handler(CommandHandler("start", self.start))
+                    self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
-                # Initialize the application
-                await self.application.initialize()
+                    # Initialize the application
+                    await self.application.initialize()
 
-                # Start the periodic posting task
-                asyncio.create_task(self.periodic_post())
+                    # Start the periodic posting task
+                    asyncio.create_task(self.periodic_post())
 
-                # Start the bot using start() and updater.start_polling()
-                await self.application.start()
-                await self.application.updater.start_polling()
+                    # Start the bot using start() and updater.start_polling()
+                    await self.application.start()
+                    await self.application.updater.start_polling()
 
-                # Keep the application running
-                while True:
-                    await asyncio.sleep(3600)  # Sleep for an hour, adjust as needed
+                    # Keep the application running
+                    while True:
+                        await asyncio.sleep(3600)  # Sleep for an hour, adjust as needed
 
-            except Conflict:
-                log_message(self.logger, "error", self, "Conflict error: Another instance of the bot is running.")
-                # Wait before retrying
-                await asyncio.sleep(conflict_wait_time)
-                conflict_wait_time += 5
-                log_message(self.logger, "info", self, "Retrying to start the bot...")
+                except Conflict:
+                    log_message(self.logger, "error", self, "Conflict error: Another instance of the bot is running.")
+                    # Wait before retrying
+                    await asyncio.sleep(conflict_wait_time)
+                    conflict_wait_time += 5
+                    log_message(self.logger, "info", self, "Retrying to start the bot...")
 
-            except NetworkError as e:
-                log_message(self.logger, "error", self, f"Network error occurred: {e}")
-                # Handle network errors, possibly with a retry mechanism
-                await asyncio.sleep(5)
+                except NetworkError as e:
+                    log_message(self.logger, "error", self, f"Network error occurred: {e}")
+                    # Handle network errors, possibly with a retry mechanism
+                    await asyncio.sleep(5)
 
-            except Exception as e:
-                log_message(self.logger, "error", self, f"An unexpected error occurred: {e}")
-                break  # Exit the loop if an unexpected error occurs
+                except Exception as e:
+                    log_message(self.logger, "error", self, f"An unexpected error occurred: {e}")
+                    break  # Exit the loop if an unexpected error occurs
 
-            # Sleep for a while before retrying
-            await asyncio.sleep(1)
+                # Sleep for a while before retrying
+                await asyncio.sleep(1)
+        
+        else:
+            log_message(self.logger, "info", self, f"Telegram client is disabled for character {self.sia.character.name}")
+            while True:
+                await asyncio.sleep(1)
