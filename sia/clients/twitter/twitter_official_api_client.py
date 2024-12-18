@@ -253,6 +253,7 @@ class SiaTwitterOfficial(SiaClient):
                     message_to_add.message_metadata = { "flagged": "test_data" }
 
                 get_message_in_db = self.memory.get_messages(id=str(tweet.id))
+                print(f"\n\n\nget_message_in_db: {get_message_in_db}\n\n\n")
                 if get_message_in_db:
                     log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
                     messages.append(get_message_in_db[0])
