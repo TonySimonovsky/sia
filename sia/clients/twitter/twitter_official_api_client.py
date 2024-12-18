@@ -539,20 +539,23 @@ class SiaTwitterOfficial(SiaClient):
             tweet_to_respond = self.decide_which_tweet_to_reply_to(tweets_to_engage)
             if self.testing:
                 log_message(self.logger_testing, "info", self, f"***Tweet to respond to***:\n{tweet_to_respond.printable()}\n\n")
-            
+
+
             # respond
+            previous_messages = self.memory.printable_messages_list(self.memory.get_messages(
+                platform="twitter",
+                author=self.character.twitter_username,
+                sort_by="wen_posted",
+                sort_order="asc"
+            )[-20:])
+            if self.testing:
+                log_message(self.logger_testing, "info", self, f"***Previous messages***:\n{previous_messages}\n\n")
+
             ai_response = self.sia.generate_response(
                 tweet_to_respond,
                 use_filtering_rules=False,
                 platform="twitter",
-                previous_messages=self.memory.printable_messages_list(
-                    self.memory.get_messages(
-                        platform="twitter",
-                        author=self.character.twitter_username,
-                        sort_by="wen_posted",
-                        sort_order="asc"
-                    )[-20:]
-                )
+                previous_messages=previous_messages
             )
             if self.testing:
                 log_message(self.logger_testing, "info", self, f"***Response***:\n{ai_response}\n\n")
