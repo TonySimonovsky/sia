@@ -60,7 +60,7 @@ class SiaMemory:
             session.close()
         
 
-    def get_messages(self, id=None, platform: str = None, author: str = None, not_author: str = None, character: str = None, conversation_id: str = None, flagged: bool = False, sort_by: str = None, sort_order: str = "asc", is_post: bool = None, from_datetime=None, exclude_own_conversations: bool = False):
+    def get_messages(self, id=None, platform: str = None, author: str = None, not_author: str = None, character: str = None, conversation_id: str = None, flagged: int = 0, sort_by: str = None, sort_order: str = "asc", is_post: bool = None, from_datetime=None, exclude_own_conversations: bool = False):
         session = self.Session()
         query = session.query(SiaMessageModel)
         if id:
@@ -102,8 +102,8 @@ class SiaMemory:
             ))
 
         print(f"\n\n\nflagged: {flagged}\n\n\n")
-        if flagged != None:
-            query = query.filter_by(flagged=flagged)
+        if flagged != 2:
+            query = query.filter_by(flagged=bool(flagged))
 
         if sort_by:
             if sort_order == "asc":
