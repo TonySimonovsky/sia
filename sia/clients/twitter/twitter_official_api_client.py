@@ -251,7 +251,7 @@ class SiaTwitterOfficial(SiaClient):
                 message_to_add.flagged = 1
                 message_to_add.message_metadata = { "flagged": "test_data" }
 
-            get_message_in_db = self.memory.get_messages(id=str(tweet.id))
+            get_message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
             print(f"get_message_in_db: {get_message_in_db}")
             
             try:
@@ -265,7 +265,7 @@ class SiaTwitterOfficial(SiaClient):
             except Exception as e:
                 print(f"Error adding message: {e}")
                 try:
-                    message_in_db = self.memory.get_messages(id=str(tweet.id))
+                    message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
                     message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
                     # only add to return if we haven't responded to this tweet yet
                     if message_in_db and not message_responses_in_db:
