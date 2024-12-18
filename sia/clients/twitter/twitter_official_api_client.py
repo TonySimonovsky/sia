@@ -547,6 +547,7 @@ class SiaTwitterOfficial(SiaClient):
             # respond
             ai_response = self.sia.generate_response(
                 tweet_to_respond,
+                use_filtering_rules=False,
                 platform="twitter",
                 previous_messages=self.memory.printable_messages_list(
                     self.memory.get_messages(

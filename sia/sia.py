@@ -245,7 +245,8 @@ class Sia:
         platform="twitter", 
         time_of_day=None,
         conversation=None,
-        previous_messages: str =None
+        previous_messages: str = None,
+        use_filtering_rules: str = True
     ) -> SiaMessageGeneratedSchema|None:
         """
         Generate a response to a message.
@@ -275,8 +276,8 @@ class Sia:
         log_message(self.logger, "info", self, f"Message to respond: {message_to_respond_str}")
         
         
-        # do not answer if the message does not pass the filtering rules
-        if self.character.responding.get("filtering_rules"):
+        # do not answer if the message does not pass the filtering rules but if we need to filter the response
+        if self.character.responding.get("filtering_rules") and use_filtering_rules:
             log_message(self.logger, "info", self, f"Checking the response against filtering rules: {self.character.responding.get('filtering_rules')}")
             llm_filtering = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
             llm_filtering_prompt_template = ChatPromptTemplate.from_messages([
