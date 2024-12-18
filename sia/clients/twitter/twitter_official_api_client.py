@@ -206,8 +206,8 @@ class SiaTwitterOfficial(SiaClient):
                       start_time: datetime = None,
                       end_time: datetime = None,
                       tweet_fields: list[str] = ["conversation_id", "created_at", "in_reply_to_user_id", "public_metrics"],
-                      max_results: int = 30,
-                      expansions: list[str] = ["author_id","referenced_tweets.id"],
+                      max_results: int = 10,
+                      expansions: list[str] = ["author_id","referenced_tweets.id", "referenced_tweets.id.author_id"],
                       client: tweepy.Client = None
     ) -> TwpResponse:
         if not client:
@@ -250,9 +250,13 @@ class SiaTwitterOfficial(SiaClient):
                     message_to_add.flagged = 1
                     message_to_add.message_metadata = { "flagged": "test_data" }
 
-                message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
-
-                messages.append(message_in_db)
+                get_message_in_db = self.memory.get_messages(id=str(tweet.id))
+                if get_message_in_db:
+                    log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
+                    messages.append(get_message_in_db[0])
+                else:
+                    message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
+                    messages.append(message_in_db)
                 
             except Exception as e:
                 print(f"Error adding message: {e}")
@@ -280,16 +284,21 @@ class SiaTwitterOfficial(SiaClient):
                             if included_tweet.id == ref_tweet_id:
                                 try:
                                     author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
-                                    print(f"\n\n\nauthor: {author}\n\n\n")
+                                    print(f"\n\n\nauthor: {author} (tweet id {included_tweet.id}): {included_tweet.text}\n\n\n")
 
                                     message_to_add = self.tweet_to_message(included_tweet, author)
                                     if self.testing:
                                         message_to_add.flagged = 1
                                         message_to_add.message_metadata = { "flagged": "test_data" }
                                         
-                                    message_in_db = self.memory.add_message(message_id=message_to_add.id, message=message_to_add)
+                                    get_message_in_db = self.memory.get_messages(id=str(included_tweet.id))
+                                    if get_message_in_db:
+                                        log_message(self.logger, "info", self, f"Message with id {included_tweet.id} already exists in the database")
+                                        messages.append(get_message_in_db[0])
+                                    else:
+                                        message_in_db = self.memory.add_message(message_id=str(included_tweet.id), message=message_to_add)
+                                        messages.append(message_in_db)
 
-                                    messages.append(message_in_db)
 
                                 except Exception as e:
                                     log_message(self.logger, "error", self, f"Error adding message: {e}")
@@ -459,13 +468,13 @@ class SiaTwitterOfficial(SiaClient):
     def exclude_tweet_messages_already_engaged(self, tweets: list[SiaMessageSchema]) -> list[SiaMessageSchema]:
         tweets_to_include = []
         for tweet in tweets:
-            if tweet.conversation_id not in self.memory.get_conversation_ids():
+            if tweet.id not in self.memory.get_conversation_ids():
                 tweets_to_include.append(tweet)
         return tweets_to_include
 
 
 
-    def engage(self, testing_rounds=3, search_period_hours=10):
+    def engage(self, testing_rounds=3, search_period_hours=24):
         
         # do not do anything
         #   if engagement is not enabled
@@ -491,7 +500,7 @@ class SiaTwitterOfficial(SiaClient):
             next_time_to_engage = latest_message.wen_posted + timedelta(hours=search_frequency)
             is_time_to_engage = datetime.now() > next_time_to_engage
             if not is_time_to_engage and not self.testing:
-                log_message(self.logger, "info", self, f"Not the time to engage yet")
+                log_message(self.logger, "info", self, f"Not the time to engage yet. Last time engaged: {latest_message.wen_posted}, next time to engage: {next_time_to_engage}")
                 return
         else:
             is_time_to_engage = True
@@ -507,7 +516,7 @@ class SiaTwitterOfficial(SiaClient):
             # end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
             # start_time = end_time - timedelta(hours=search_period_hours)
 
-            start_time = (datetime.now(timezone.utc) - timedelta(hours=search_frequency*i+24)).isoformat()
+            start_time = (datetime.now(timezone.utc) - timedelta(hours=search_frequency*i+search_period_hours)).isoformat()
             end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
 
 
@@ -534,14 +543,42 @@ class SiaTwitterOfficial(SiaClient):
                 log_message(self.logger_testing, "info", self, f"***Tweet to respond to***:\n{tweet_to_respond.printable()}\n\n")
             
             # respond
-            ai_response = self.sia.generate_response(tweet_to_respond, platform="twitter")
+            ai_response = self.sia.generate_response(
+                tweet_to_respond,
+                platform="twitter",
+                previous_messages=self.memory.printable_messages_list(
+                    self.memory.get_messages(
+                        platform="twitter",
+                        author=self.character.twitter_username,
+                        sort_by="wen_posted",
+                        sort_order="asc"
+                    )[-20:]
+                )
+            )
             if self.testing:
                 log_message(self.logger_testing, "info", self, f"***Response***:\n{ai_response}\n\n")
             
-            tweet_id = self.publish_post(ai_response, media=None, in_reply_to_tweet_id=tweet_to_respond.id)
-            if self.testing:
-                log_message(self.logger_testing, "info", self, f"***Published response***:\nTweet id: {tweet_id}\n\n")
+            if not self.testing:
+                tweet_id = self.publish_post(ai_response, media=None, in_reply_to_tweet_id=tweet_to_respond.id)
+                if self.testing:
+                    log_message(self.logger_testing, "info", self, f"***Published response***:\nTweet id: {tweet_id}\n\n")
 
+                # save message to db
+                message = self.memory.add_message(
+                    message_id=str(tweet_id),
+                    message=SiaMessageGeneratedSchema(
+                        conversation_id=tweet_to_respond.id,
+                        content=ai_response.content,
+                        platform="twitter",
+                        character=self.character.name,
+                        author=self.character.twitter_username,
+                        response_to=tweet_to_respond.id,
+                        wen_posted=datetime.now(timezone.utc),
+                        flagged=0,
+                        metadata={}
+                    )
+                )
+            
 
 
     async def run(self):

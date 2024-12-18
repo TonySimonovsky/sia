@@ -244,7 +244,8 @@ class Sia:
         message: SiaMessageSchema, 
         platform="twitter", 
         time_of_day=None,
-        conversation=None
+        conversation=None,
+        previous_messages: str =None
     ) -> SiaMessageGeneratedSchema|None:
         """
         Generate a response to a message.
@@ -331,18 +332,34 @@ class Sia:
 
                 Conversation:
                 {conversation}
+                
+                Your response must be unique and creative. It must also be drastically different from your previous messages.
+                
+                Some of your previous messages:
+                {previous_messages}
             """),
             ("user", """
-                Generate your response to the message. Your response length must be fewer than 30 words.
+                Generate your response to the message.
+                
+                Your response length must be fewer than 30 words.
+
+                Your response must be unique and creative.
+                
+                It must also be drastically different from your previous messages in all ways, shapes or forms.
+                
+                Avoid creating a message that resembles any of your previous one in how it starts, unfolds and finishes.
             """)
         ])
+        
+        log_message(self.logger, "info", self, f"Previous messages: {previous_messages}")
 
         ai_input = {
             "you_are": self.character.prompts.get("you_are"),
             "communication_requirements": self.character.prompts.get("communication_requirements"),
             "platform": platform,
             "message": message_to_respond_str,
-            "conversation": conversation_str
+            "conversation": conversation_str,
+            "previous_messages": previous_messages
         }
         
         try: 

@@ -4,6 +4,7 @@ from .models_db import SiaMessageModel, SiaCharacterSettingsModel, Base
 from .schemas import SiaMessageSchema, SiaMessageGeneratedSchema, SiaCharacterSettingsSchema
 from sia.character import SiaCharacter
 import json
+import textwrap
 
 from utils.logging_utils import setup_logging, log_message, enable_logging
 
@@ -114,7 +115,7 @@ class SiaMemory:
     
     def get_conversation_ids(self):
         session = self.Session()
-        conversation_ids = session.query(SiaMessageModel.conversation_id).distinct().all()
+        conversation_ids = session.query(SiaMessageModel.conversation_id).filter(SiaMessageModel.id != SiaMessageModel.conversation_id).distinct().all()
         session.close()
         return [conversation_id[0] for conversation_id in conversation_ids]
     
@@ -129,6 +130,29 @@ class SiaMemory:
     def reset_database(self):
         Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)
+
+
+    @classmethod
+    def printable_message(self, message_id, author_username, created_at, text, wrap_width=70, indent_width=5):
+        output_str = ""
+        output_str += f"{author_username} [{created_at}] (message id: {message_id}):\n"
+        wrapped_comment = textwrap.fill(text.strip(), width=wrap_width)
+        output_str += ' ' * indent_width + wrapped_comment.replace('\n', '\n' + ' ' * indent_width) + "\n"
+
+        return output_str
+
+    @classmethod
+    def printable_messages_list(self, messages):
+        output_str = ""
+        for message in messages:
+            message_id = message.id
+
+            output_str += self.printable_message(message_id=message_id, author_username=message.author, created_at=message.wen_posted, text=message.content)
+            
+            output_str += f"\n\n{'='*10}\n\n"
+
+        return output_str
+
 
 
     def get_character_settings(self):
