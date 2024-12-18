@@ -102,7 +102,7 @@ class SiaMemory:
             ))
 
         if flagged != 2:
-            query = query.filter_by(flagged=bool(flagged))
+            query = query.filter_by(flagged=int(flagged))
 
         if sort_by:
             if sort_order == "asc":
