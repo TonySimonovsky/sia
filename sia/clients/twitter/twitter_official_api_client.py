@@ -559,6 +559,10 @@ class SiaTwitterOfficial(SiaClient):
             )
             if self.testing:
                 log_message(self.logger_testing, "info", self, f"***Response***:\n{ai_response}\n\n")
+
+            if not ai_response:
+                log_message(self.logger, "error", self, f"No response generated for tweet: {tweet_to_respond}")
+                continue
             
             metadata = {}
             if not self.testing:
