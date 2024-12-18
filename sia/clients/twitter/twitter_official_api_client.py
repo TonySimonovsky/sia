@@ -243,17 +243,18 @@ class SiaTwitterOfficial(SiaClient):
         for tweet in tweets.data:
             
             log_message(self.logger, "info", self, f"Processing tweet: {tweet.id}")
+
+            author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
+            
+            message_to_add = self.tweet_to_message(tweet, author)
+            if self.testing:
+                message_to_add.flagged = 1
+                message_to_add.message_metadata = { "flagged": "test_data" }
+
+            get_message_in_db = self.memory.get_messages(id=str(tweet.id))
+            print(f"get_message_in_db: {get_message_in_db}")
             
             try:
-                author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
-                
-                message_to_add = self.tweet_to_message(tweet, author)
-                if self.testing:
-                    message_to_add.flagged = 1
-                    message_to_add.message_metadata = { "flagged": "test_data" }
-
-                get_message_in_db = self.memory.get_messages(id=str(tweet.id))
-                print(f"\n\n\nget_message_in_db: {get_message_in_db}\n\n\n")
                 if get_message_in_db:
                     log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
                     messages.append(get_message_in_db[0])
