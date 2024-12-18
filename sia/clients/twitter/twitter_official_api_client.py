@@ -242,7 +242,7 @@ class SiaTwitterOfficial(SiaClient):
 
         for tweet in tweets.data:
             
-            log_message(self.logger, "info", self, f"Processing tweet: {tweet.id}")
+            log_message(self.logger, "info", self, f"[save_tweets_to_db] Processing tweet: {tweet.id}")
 
             author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
             
