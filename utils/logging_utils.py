@@ -67,7 +67,7 @@ def log_message(logger, level, class_instance, message, user_id=None):
         log_func = getattr(logger, level)
         
         timestamp = time.strftime("%y%m%d-%H%M")
-        log_message = f'{timestamp} - {file_name}:{line_number} - {class_name}{' - '+func_name if func_name else ''} - {message}'
+        log_message = f"{timestamp} - {file_name}:{line_number} - {class_name}{' - '+func_name if func_name else ''} - {message}"
 
         # Add user ID to the log message if it's provided
         if user_id is not None:
