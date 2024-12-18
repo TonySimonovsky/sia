@@ -112,6 +112,13 @@ class SiaMemory:
         return [SiaMessageSchema.from_orm(post) for post in posts]
     
     
+    def get_conversation_ids(self):
+        session = self.Session()
+        conversation_ids = session.query(SiaMessageModel.conversation_id).distinct().all()
+        session.close()
+        return [conversation_id[0] for conversation_id in conversation_ids]
+    
+    
     def clear_messages(self):
         session = self.Session()
         session.query(SiaMessageModel).filter_by(character=self.character.name).delete()
