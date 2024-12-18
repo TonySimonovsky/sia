@@ -31,7 +31,7 @@ class SiaMemory:
             character=message.character,
             author=message.author,
             content=message.content,
-            conversation_id=message.conversation_id or message.id,
+            conversation_id=message.conversation_id or message_id,
             response_to=message.response_to,
             flagged=message.flagged,
             message_metadata=message.message_metadata,
