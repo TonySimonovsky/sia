@@ -546,7 +546,8 @@ class SiaTwitterOfficial(SiaClient):
                 platform="twitter",
                 author=self.character.twitter_username,
                 sort_by="wen_posted",
-                sort_order="asc"
+                sort_order="asc",
+                flagged=2
             )[-20:])
             if self.testing:
                 log_message(self.logger_testing, "info", self, f"***Previous messages***:\n{previous_messages}\n\n")
