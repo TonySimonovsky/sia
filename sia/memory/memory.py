@@ -101,7 +101,6 @@ class SiaMemory:
                 SiaMessageModel.conversation_id == None
             ))
 
-        print(f"\n\n\nflagged: {flagged}\n\n\n")
         if flagged != 2:
             query = query.filter_by(flagged=bool(flagged))
 

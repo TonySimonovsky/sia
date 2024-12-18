@@ -252,7 +252,6 @@ class SiaTwitterOfficial(SiaClient):
                 message_to_add.message_metadata = { "flagged": "test_data" }
 
             get_message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
-            print(f"get_message_in_db: {get_message_in_db}")
             
             try:
                 if get_message_in_db:
@@ -288,7 +287,6 @@ class SiaTwitterOfficial(SiaClient):
                             if included_tweet.id == ref_tweet_id:
                                 try:
                                     author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
-                                    print(f"\n\n\nauthor: {author} (tweet id {included_tweet.id}): {included_tweet.text}\n\n\n")
 
                                     message_to_add = self.tweet_to_message(included_tweet, author)
                                     if self.testing:
@@ -296,7 +294,6 @@ class SiaTwitterOfficial(SiaClient):
                                         message_to_add.message_metadata = { "flagged": "test_data" }
                                         
                                     get_message_in_db = self.memory.get_messages(id=str(included_tweet.id), flagged=2)
-                                    print(f"get_message_in_db 2: {get_message_in_db}")
                                     if get_message_in_db:
                                         log_message(self.logger, "info", self, f"Message with id {included_tweet.id} already exists in the database")
                                         messages.append(get_message_in_db[0])
@@ -356,7 +353,6 @@ class SiaTwitterOfficial(SiaClient):
                             if included_tweet.id == ref_tweet_id:
                                 try:
                                     author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
-                                    print(f"\n\n\nauthor: {author}\n\n\n")
                                     message_in_db = self.memory.add_message(message_id=included_tweet.id, message=self.tweet_to_message(included_tweet, author))
                                     messages.append(message_in_db)
                                 except Exception as e:
@@ -523,9 +519,6 @@ class SiaTwitterOfficial(SiaClient):
 
             start_time = (datetime.now(timezone.utc) - timedelta(hours=search_frequency*i+search_period_hours)).isoformat()
             end_time = datetime.now(timezone.utc) - timedelta(hours=search_frequency*i) - timedelta(seconds=23)
-
-
-            print(f"start_time: {start_time}, end_time: {end_time}")
 
             # search for tweets to engage with
             tweets_to_engage = []
