@@ -266,7 +266,7 @@ class SiaTwitterOfficial(SiaClient):
                 print(f"Error adding message: {e}")
                 try:
                     message_in_db = self.memory.get_messages(id=str(tweet.id))
-                    message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=None)
+                    message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
                     # only add to return if we haven't responded to this tweet yet
                     if message_in_db and not message_responses_in_db:
                         log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
@@ -295,7 +295,7 @@ class SiaTwitterOfficial(SiaClient):
                                         message_to_add.flagged = 1
                                         message_to_add.message_metadata = { "flagged": "test_data" }
                                         
-                                    get_message_in_db = self.memory.get_messages(id=str(included_tweet.id), flagged=None)
+                                    get_message_in_db = self.memory.get_messages(id=str(included_tweet.id), flagged=2)
                                     print(f"get_message_in_db 2: {get_message_in_db}")
                                     if get_message_in_db:
                                         log_message(self.logger, "info", self, f"Message with id {included_tweet.id} already exists in the database")
