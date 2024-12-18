@@ -225,6 +225,9 @@ class SiaTwitterOfficial(SiaClient):
         return tweets
 
 
+
+
+
     def save_tweets_to_db(self, tweets: TwpResponse) -> list[SiaMessageSchema]:
         messages = []
         # for tweet in tweets.data:
@@ -453,6 +456,14 @@ class SiaTwitterOfficial(SiaClient):
         return tweet
 
 
+    def exclude_tweet_messages_already_engaged(self, tweets: list[SiaMessageSchema]) -> list[SiaMessageSchema]:
+        tweets_to_include = []
+        for tweet in tweets:
+            if tweet.conversation_id not in self.memory.get_conversation_ids():
+                tweets_to_include.append(tweet)
+        return tweets_to_include
+
+
 
     def engage(self, testing_rounds=3, search_period_hours=10):
         
@@ -478,12 +489,12 @@ class SiaTwitterOfficial(SiaClient):
         if messages_to_engage_in_db:
             latest_message = messages_to_engage_in_db[0]
             next_time_to_engage = latest_message.wen_posted + timedelta(hours=search_frequency)
-            time_to_engage = datetime.now() > next_time_to_engage
-            if not time_to_engage and not self.testing:
+            is_time_to_engage = datetime.now() > next_time_to_engage
+            if not is_time_to_engage and not self.testing:
                 log_message(self.logger, "info", self, f"Not the time to engage yet")
                 return
         else:
-            time_to_engage = 1
+            is_time_to_engage = True
 
 
         # if we are not in testing mode, we will only do one round,
@@ -508,6 +519,8 @@ class SiaTwitterOfficial(SiaClient):
                 tweets = self.search_tweets(search_query, start_time, end_time, client=self.client)
                 tweets_messages = self.save_tweets_to_db(tweets)
                 log_message(self.logger, "info", self, f"Found {len(tweets_messages)} tweets to engage with")
+                tweets_messages = self.exclude_tweet_messages_already_engaged(tweets_messages)
+                log_message(self.logger, "info", self, f"{len(tweets_messages)} tweets to engage with after excluding already engaged")
                 tweets_to_engage.extend(tweets_messages)
             if not tweets_to_engage:
                 log_message(self.logger, "info", self, f"No tweets found to engage with")
