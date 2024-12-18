@@ -563,6 +563,8 @@ class SiaTwitterOfficial(SiaClient):
                 if self.testing:
                     log_message(self.logger_testing, "info", self, f"***Published response***:\nTweet id: {tweet_id}\n\n")
 
+                metadata = { "flagged": "test_data" } if self.testing else {}
+
                 # save message to db
                 message = self.memory.add_message(
                     message_id=str(tweet_id),
@@ -574,8 +576,8 @@ class SiaTwitterOfficial(SiaClient):
                         author=self.character.twitter_username,
                         response_to=tweet_to_respond.id,
                         wen_posted=datetime.now(timezone.utc),
-                        flagged=0,
-                        metadata={}
+                        flagged=int(self.testing),
+                        metadata=metadata
                     )
                 )
             
