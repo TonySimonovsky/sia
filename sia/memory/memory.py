@@ -101,8 +101,8 @@ class SiaMemory:
                 SiaMessageModel.conversation_id == None
             ))
 
-        if flagged != 2:
-            query = query.filter_by(flagged=bool(flagged))
+        if flagged != None:
+            query = query.filter_by(flagged=flagged)
 
         if sort_by:
             if sort_order == "asc":
