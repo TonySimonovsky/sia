@@ -53,7 +53,7 @@ cd AIngryMarketer_Sia
 
 Example:
 ```
-git remote add aingry https://github.com/TonySimonovsky/AIngryMarketer_Sia.git
+git remote set-url origin https://github.com/TonySimonovsky/AIngryMarketer_Sia.git
 git remote add upstream https://github.com/TonySimonovsky/sia.git
 ```
 
