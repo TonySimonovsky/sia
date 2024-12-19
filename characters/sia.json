@@ -177,9 +177,6 @@
                 "search_frequency": 2,
                 "search_queries": [
                     "from:ValueTokenized -is:reply"
-                ],
-                "means_for_achieving_core_objective": [
-                    "To beg for followers on Twitter in every message."
                 ]
             }
         },
