@@ -7,7 +7,7 @@ from utils.logging_utils import setup_logging, log_message, enable_logging
 
 class SiaCharacter:
     
-    def __init__(self, name=None, name_id=None, twitter_username=None, intro=None, lore=None, instructions=None, bio=None, traits=None, moods=None, post_examples={}, post_parameters={}, message_examples={}, topics=None, plugins_settings={}, platform_settings={}, responding={"enabled": True, "filtering_rules": []}, knowledge_modules={}, json_file=None, sia=None, logging_enabled=True):
+    def __init__(self, name=None, name_id=None, twitter_username=None, intro=None, lore=None, core_objective=None, means_for_achieving_core_objective=None, instructions=None, bio=None, traits=None, moods=None, post_examples={}, post_parameters={}, message_examples={}, topics=None, plugins_settings={}, platform_settings={}, responding={"enabled": True, "filtering_rules": []}, knowledge_modules={}, json_file=None, sia=None, logging_enabled=True):
         if json_file:
             if not name_id:
                 name_id = json_file.split('/')[-1].split('.')[0]
@@ -21,6 +21,8 @@ class SiaCharacter:
             self.twitter_username = twitter_username
             self.intro = intro
             self.lore = lore
+            self.core_objective = core_objective
+            self.means_for_achieving_core_objective = means_for_achieving_core_objective
             self.instructions = instructions
             self.bio = bio
             self.traits = traits
@@ -47,6 +49,22 @@ class SiaCharacter:
                 
                 Here's more about you:
                 {self.lore}.
+                
+                """ + 
+
+                (f"""
+                Your core objective is:
+                {self.core_objective}.
+                """ if self.core_objective else "") +
+
+                (f"""
+                Your means for achieving your core objective are:
+                {self.means_for_achieving_core_objective}.
+                """ if self.means_for_achieving_core_objective else "") +
+
+                f"""
+                Your traits are:
+                {self.traits}.
                 
                 Here are some important instructions to follow:
                 {self.instructions}
@@ -76,6 +94,8 @@ class SiaCharacter:
         self.twitter_username = data['twitter_username'] # required
         self.intro = data['intro'] # required
         self.lore = data['lore'] # required
+        self.core_objective = data.get('core_objective') # required
+        self.means_for_achieving_core_objective = data.get('means_for_achieving_core_objective') # required
         self.instructions = data.get('instructions') # optional
         self.bio = data.get('bio') # optional
         self.traits = data.get('traits') # optional
