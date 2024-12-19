@@ -209,7 +209,7 @@ class SiaTwitterOfficial(SiaClient):
                       end_time: datetime = None,
                       tweet_fields: list[str] = ["conversation_id", "created_at", "in_reply_to_user_id", "public_metrics"],
                       max_results: int = 10,
-                      expansions: list[str] = ["author_id","referenced_tweets.id", "referenced_tweets.id.author_id"],
+                      expansions: list[str] = ["author_id","referenced_tweets.id","referenced_tweets.id.author_id"],
                       client: tweepy.Client = None
     ) -> TwpResponse:
         if not client:
@@ -523,7 +523,7 @@ class SiaTwitterOfficial(SiaClient):
             # search for tweets to engage with
             tweets_to_engage = []
             for search_query in self.character.platform_settings.get("twitter", {}).get("engage", {}).get("search_queries", []):
-                tweets = self.search_tweets(search_query, start_time, end_time, client=self.client)
+                tweets = self.search_tweets(query=search_query, start_time=start_time, end_time=end_time, client=self.client)
                 tweets_messages = self.save_tweets_to_db(tweets)
                 log_message(self.logger, "info", self, f"Found {len(tweets_messages)} tweets to engage with")
                 tweets_messages = self.exclude_tweet_messages_already_engaged(tweets_messages)
