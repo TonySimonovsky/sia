@@ -134,12 +134,13 @@ class SiaTwitterOfficial(SiaClient):
         messages = []
         
         try:
-            new_replies_to_my_tweets = self.client.search_recent_tweets(
-                query=f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
-                since_id=since_id,
-                tweet_fields=["conversation_id","created_at","in_reply_to_user_id"],
-                expansions=["author_id","referenced_tweets.id"]
-            )
+            search_inputs = {
+                "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
+            }
+            if since_id:
+                search_inputs["since_id"] = since_id
+            
+            new_replies_to_my_tweets = self.search_tweets(**search_inputs)
         except Exception as e:
             log_message(self.logger, "error", self, f"Error getting replies: {e}")
             return []
