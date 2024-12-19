@@ -7,6 +7,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 import asyncio
 import threading
+import json
 
 from sia.character import SiaCharacter
 from sia.clients.client import SiaClient
@@ -332,13 +333,30 @@ class Sia:
                 {message}
 
                 Conversation:
+                ------------
                 {conversation}
+                ------------
                 
-                Your response must be unique and creative. It must also be drastically different from your previous messages.
+                Your response must be unique and creative.  It must also be drastically different from your previous messages.
                 
+                It must still be consistent with your personality, mood, core objective and means for achieving it.
+                """ +
+                
+                ("""
                 Some of your previous messages:
+                ------------
                 {previous_messages}
-            """),
+                ------------
+
+                Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
+                
+                Examples:
+                - if one of your previous messages starts with a question, your new response must not start with a question.
+                - if one of your previous messages continues with an assessment of the situation, your new response must not continue with an assessment of the situation.
+                - if one of your previous messages ends with a question, your new response must not end with a question.
+                - if your previous message is short, your new response must be way longer and vice versa.
+                """ if previous_messages else "")
+            ),
             ("user", """
                 Generate your response to the message.
                 
@@ -347,13 +365,15 @@ class Sia:
                 Your response must be unique and creative.
                 
                 It must also be drastically different from your previous messages in all ways, shapes or forms.
+
+                Your response must still be consistent with your personality, mood, core objective and means for achieving it.
                 
-                Avoid creating a message that resembles any of your previous one in how it starts, unfolds and finishes.
+                Your response must be natural continuation of the conversation or the message you are responding to. It must add some value to the conversation.
+
+                Generate your response to the message following the rules and instructions provided above.
             """)
         ])
         
-        log_message(self.logger, "info", self, f"Previous messages: {previous_messages}")
-
         ai_input = {
             "you_are": self.character.prompts.get("you_are"),
             "communication_requirements": self.character.prompts.get("communication_requirements"),
@@ -362,9 +382,11 @@ class Sia:
             "conversation": conversation_str,
             "previous_messages": previous_messages
         }
+
+        log_message(self.logger, "info", self, f"ai_input: {json.dumps(ai_input, indent=4)}")
         
         try: 
-            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.3)
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.0)
             
             ai_chain = prompt_template | llm
 
