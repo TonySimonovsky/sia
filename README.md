@@ -112,9 +112,8 @@ git merge upstream/main
 
 ## On Render.com
 
-Use the following instruction: https://render.com/docs/cronjobs
+Use the following instruction: https://render.com/docs/background-workers
 
 Specific instructions for deploying Sia agent:
 - when deploying, select the repo you created in 'Creating new AI agent using Sia framework'
-- In the schedule field input '0 * * * *' instead of the default value. This will run the agent every hour. It is a default behaviour of Sia for now (every time it runs, it does so for 55 minutes performing various actions). Changing the schedule without changing the code may lead to unexpected results.
 - environment variables - click on "Add from .env" and insert the content of .env file you have locally in the repo folder.
