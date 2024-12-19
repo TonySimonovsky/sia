@@ -176,8 +176,7 @@
                 "enabled": true,
                 "search_frequency": 2,
                 "search_queries": [
-                    "(from:truth_terminal OR from:0xzerebro OR from:ai16zdao OR from:degenspartanai OR from:pmairca) -is:reply",
-                    "(@truth_terminal OR @0xzerebro OR @ai16zdao OR @degenspartanai OR @pmairca) is:reply"
+                    "from:ValueTokenized -is:reply"
                 ],
                 "means_for_achieving_core_objective": [
                     "To beg for followers on Twitter in every message."
