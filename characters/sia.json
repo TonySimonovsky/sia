@@ -163,14 +163,14 @@
             "username": "sia_really",
             "post_frequency": 2,
             "post": {
-                "enabled": false,
+                "enabled": true,
                 "post_frequency": 2,
                 "post_parameters": {
                     "length_ranges": ["1-5", "10-15", "20-30"]
                 }
             },
             "respond": {
-                "enabled": false
+                "enabled": true
             },
             "engage": {
                 "enabled": true,
