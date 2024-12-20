@@ -122,9 +122,10 @@ class SiaTwitterOfficial(SiaClient):
 
 
     def get_last_retrieved_reply_id(self):
-        replies = self.memory.get_messages(platform="twitter", not_author=self.character.name)
+        replies = self.memory.get_messages(platform="twitter", not_author=self.character.name, character=self.character.name)
         if replies:
-            return max(replies, key=lambda reply: reply.id).id
+            max_reply = max(replies, key=lambda reply: reply.id)
+            return None if max_reply.id == "None" else max_reply.id
 
 
     def get_new_replies_to_my_tweets(self) -> list[SiaMessageSchema]:
