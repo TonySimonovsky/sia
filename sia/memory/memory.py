@@ -86,7 +86,7 @@ class SiaMemory:
                     SiaMessageModel.author == self.character.twitter_username,
                     SiaMessageModel.id == SiaMessageModel.conversation_id  # This identifies the initial post
                 )
-            ).distinct().subquery()
+            ).distinct().select_from(SiaMessageModel).scalar_subquery()
             
             # Then exclude messages from these conversations
             query = query.filter(
