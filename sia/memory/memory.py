@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, asc, desc, or_, and_
+from sqlalchemy import create_engine, asc, desc, or_, and_, select
 from .models_db import SiaMessageModel, SiaCharacterSettingsModel, Base
 from .schemas import SiaMessageSchema, SiaMessageGeneratedSchema, SiaCharacterSettingsSchema
 from sia.character import SiaCharacter
@@ -80,13 +80,13 @@ class SiaMemory:
 
         # Exclude messages from conversations that we initiated
         if exclude_own_conversations:
-            # Get conversation_ids where we were the initial poster
-            our_initiated_conversations = session.query(SiaMessageModel.conversation_id).filter(
+            # Create an explicit select statement
+            our_initiated_conversations = select(SiaMessageModel.conversation_id).where(
                 and_(
                     SiaMessageModel.author == self.character.twitter_username,
-                    SiaMessageModel.id == SiaMessageModel.conversation_id  # This identifies the initial post
+                    SiaMessageModel.id == SiaMessageModel.conversation_id
                 )
-            ).distinct().select_from(SiaMessageModel).scalar_subquery()
+            ).distinct()
             
             # Then exclude messages from these conversations
             query = query.filter(
