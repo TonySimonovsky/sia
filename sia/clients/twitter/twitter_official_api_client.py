@@ -569,7 +569,9 @@ class SiaTwitterOfficial(SiaClient):
             metadata = {}
             if not self.testing:
                 tweet_id = self.publish_post(ai_response, media=None, in_reply_to_tweet_id=tweet_to_respond.id)
+
                 log_message(self.logger, "info", self, f"Published response with id: {tweet_id}")
+
                 if self.testing:
                     log_message(self.logger_testing, "info", self, f"***Published response***:\nTweet id: {tweet_id}\n\n")
 
