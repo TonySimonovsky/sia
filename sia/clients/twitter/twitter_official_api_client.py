@@ -122,7 +122,8 @@ class SiaTwitterOfficial(SiaClient):
 
 
     def get_last_retrieved_reply_id(self):
-        replies = self.memory.get_messages(platform="twitter", not_author=self.character.name, character=self.character.name)
+        log_message(self.logger, "info", self, f"Getting last retrieved reply id for {self.character.twitter_username} (character: {self.character.name})")
+        replies = self.memory.get_messages(platform="twitter", not_author=self.character.twitter_username, character=self.character.name)
         if replies:
             max_reply = max(replies, key=lambda reply: reply.id)
             return None if max_reply.id == "None" else max_reply.id
@@ -182,6 +183,7 @@ class SiaTwitterOfficial(SiaClient):
                         content=reply.text,
                         platform="twitter",
                         author=next(user.username for user in new_replies_to_my_tweets.includes['users'] if user.id == reply.author_id),
+                        character=self.character.name,
                         response_to=str(next((ref.id for ref in reply.referenced_tweets if ref.type == "replied_to"), None)) if reply.referenced_tweets else None,
                         wen_posted=reply.created_at,
                         flagged=int(flagged),
@@ -748,6 +750,13 @@ class SiaTwitterOfficial(SiaClient):
                         log_message(self.logger, "info", self, f"Replies sent during this hour: {replies_sent}, max allowed: {max_responses_an_hour}")
                         if replies_sent >= max_responses_an_hour:
                             break
+                        
+                        # temporary: do not responsd in coversations where you've already sent 3 replies
+                        current_conversation = self.get_conversation(r.conversation_id)
+                        own_messages_count = sum(1 for msg in current_conversation if msg.author == self.character.twitter_username)
+                        if own_messages_count >= 3:
+                            log_message(self.logger, "info", self, f"Skipping conversation {r.conversation_id} as it already has {own_messages_count} replies from us.")
+                            continue
 
                         print(f"Reply: {r}")
                         if r.flagged:
