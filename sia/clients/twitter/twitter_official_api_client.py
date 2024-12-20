@@ -211,19 +211,24 @@ class SiaTwitterOfficial(SiaClient):
                       tweet_fields: list[str] = ["conversation_id", "created_at", "in_reply_to_user_id", "public_metrics"],
                       max_results: int = 10,
                       expansions: list[str] = ["author_id","referenced_tweets.id","referenced_tweets.id.author_id"],
+                      since_id: str = None,
                       client: tweepy.Client = None
     ) -> TwpResponse:
         if not client:
             client = self.client
         
-        tweets = client.search_recent_tweets(
-            query=query,
-            tweet_fields=tweet_fields,
-            max_results=max_results,
-            expansions=expansions,
-            start_time=start_time,
-            end_time=end_time
-        )
+        search_inputs = {
+            "query": query,
+            "tweet_fields": tweet_fields,
+            "max_results": max_results,
+            "expansions": expansions,
+            "start_time": start_time,
+            "end_time": end_time
+        }
+        if since_id:
+            search_inputs["since_id"] = since_id
+        
+        tweets = client.search_recent_tweets(**search_inputs)
         
         return tweets
 
