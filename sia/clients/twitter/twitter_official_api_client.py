@@ -136,6 +136,7 @@ class SiaTwitterOfficial(SiaClient):
         try:
             search_inputs = {
                 "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
+                "client": self.client
             }
             if since_id:
                 search_inputs["since_id"] = since_id
