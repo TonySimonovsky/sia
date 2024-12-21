@@ -50,15 +50,23 @@ def log_message(logger, level, class_instance, message, user_id=None):
     if logging_enabled:
         """Log a message with the given level on the provided logger."""
         current_frame = inspect.currentframe()
+        # print(f"current_frame: {current_frame}\n")
         frame_info = inspect.getframeinfo(current_frame.f_back)
-        
+        # print(f"frame_info: {frame_info}\n")
+
         file_name = os.path.basename(frame_info.filename)  # Get only the base filename, not the full path
         line_number = frame_info.lineno
         class_name = class_instance if isinstance(class_instance, str) else class_instance.__class__.__name__ if hasattr(class_instance, '__class__') else class_instance.__name__
-        if isinstance(class_name, str):
-            func_name = ''
-        else:
-            func_name = current_frame.f_back.f_code.co_name
+        # print(f"class_name: {class_name}\n")
+
+        func_name = current_frame.f_back.f_code.co_name
+        # if isinstance(class_name, str):
+        #     func_name = ''
+        # else:
+        #     func_name = current_frame.f_back.f_code.co_name
+        
+        # print(f"func_name: {func_name}\n")
+        # print(f"current_frame.f_back.f_code.co_name: {current_frame.f_back.f_code.co_name}\n")
 
         # Check if the logging level is valid
         if level not in ['debug', 'info', 'warning', 'error', 'critical']:
