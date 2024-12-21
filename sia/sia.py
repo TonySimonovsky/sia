@@ -14,8 +14,8 @@ from langchain_openai import ChatOpenAI
 
 from plugins.imgflip_meme_generator import ImgflipMemeGenerator
 from sia.character import SiaCharacter
-from sia.clients.client import SiaClient
-from sia.clients.telegram.telegram_client import SiaTelegram
+# from sia.clients.telegram.telegram_client import SiaTelegram
+from sia.clients.telegram.telegram_client_aiogram import SiaTelegram
 from sia.clients.twitter.twitter_official_api_client import SiaTwitterOfficial
 from sia.memory.memory import SiaMemory
 from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
@@ -23,6 +23,8 @@ from sia.modules.knowledge.models_db import KnowledgeModuleSettingsModel
 from sia.schemas.schemas import ResponseFilteringResultLLMSchema
 from utils.etc_utils import generate_image_dalle, save_image_from_url
 from utils.logging_utils import enable_logging, log_message, setup_logging
+
+from sia.clients.client_interface import SiaClientInterface
 
 
 class Sia:
@@ -152,7 +154,7 @@ class Sia:
         return None
 
     def generate_post(
-        self, platform="twitter", author=None, character=None, time_of_day=None
+        self, platform="twitter", author=None, character=None, time_of_day=None, conversation_id=None
     ):
 
         plugin = self.get_plugin(time_of_day=self.character.current_time_of_day())
@@ -293,8 +295,9 @@ class Sia:
         generated_post_schema = SiaMessageGeneratedSchema(
             content=post_content,
             platform=platform,
-            author=self.character.twitter_username,
-            character=self.character.name,
+            author=author,
+            character=character,
+            conversation_id=conversation_id
         )
 
         if plugin:
@@ -563,30 +566,47 @@ class Sia:
         return generated_response_schema
 
     def publish_post(
-        self, client: SiaClient, post: SiaMessageGeneratedSchema, media: dict = []
+        self, client: SiaClientInterface, post: SiaMessageGeneratedSchema, media: dict = []
     ) -> str:
         tweet_id = client.publish_post(post, media)
         return tweet_id
 
+
     def run_telegram(self):
         if self.telegram:
-            asyncio.run(self.telegram.run())
-        else:
-            while True:
-                time.sleep(1)
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Run the telegram client
+                loop.run_until_complete(self.telegram.run())
+            finally:
+                loop.close()
 
     def run_twitter(self):
-        asyncio.run(self.twitter.run())
+        if self.twitter:
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Run the twitter client
+                loop.run_until_complete(self.twitter.run())
+            finally:
+                loop.close()
 
-    def run(self):
-        # Create a thread for the Telegram client
-        telegram_thread = threading.Thread(target=self.run_telegram)
-        telegram_thread.start()
-
-        # Create a thread for the Twitter client
-        twitter_thread = threading.Thread(target=self.run_twitter)
-        twitter_thread.start()
-
-        # Join the threads for the main program to wait for them
-        telegram_thread.join()
-        twitter_thread.join()
+    async def run(self):
+        """Run all clients concurrently using asyncio"""
+        tasks = []
+        
+        # Add Telegram task if enabled
+        if self.telegram:
+            tasks.append(self.telegram.run())
+            
+        # Add Twitter task if enabled
+        if self.twitter:
+            tasks.append(self.twitter.run())
+            
+        # Run all tasks concurrently
+        if tasks:
+            await asyncio.gather(*tasks)
+    
