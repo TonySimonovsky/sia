@@ -174,9 +174,9 @@
             },
             "engage": {
                 "enabled": true,
-                "search_frequency": 2,
+                "search_frequency": 1,
                 "search_queries": [
-                    "from:ValueTokenized -is:reply"
+                    "(from:ValueTokenized OR from:Paradigmus_xyz) -is:reply"
                 ]
             }
         },
