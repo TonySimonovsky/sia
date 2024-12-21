@@ -27,7 +27,7 @@ async def main():
         }
     if os.getenv("TG_BOT_TOKEN"):
         client_creds["telegram_creds"] = {
-            "tg_bot_token": os.getenv("TG_BOT_TOKEN"),
+            "bot_token": os.getenv("TG_BOT_TOKEN"),
         }
 
     sia = Sia(

@@ -70,7 +70,7 @@ async def main():
     tweet_id = sia.twitter.publish_post(post, media)
 
     if tweet_id and tweet_id is not Forbidden:
-        sia.memory.add_message(message_id=tweet_id, message=post)
+        sia.memory.add_message(message_id=tweet_id, message=post, message_type="post")
 
 
 # Start the asyncio event loop
