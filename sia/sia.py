@@ -424,6 +424,17 @@ class Sia:
         return tweet_id
 
 
+    def run_telegram(self):
+        if self.telegram:
+            asyncio.run(self.telegram.run())
+        else:
+            while True:
+                time.sleep(1)
+
+    def run_twitter(self):
+        asyncio.run(self.twitter.run())
+
+
     def run(self):
         # Create a thread for the Telegram client
         telegram_thread = threading.Thread(target=self.run_telegram)
@@ -437,12 +448,3 @@ class Sia:
         telegram_thread.join()
         twitter_thread.join()
 
-    def run_telegram(self):
-        if self.telegram:
-            asyncio.run(self.telegram.run())
-        else:
-            while True:
-                time.sleep(1)
-
-    def run_twitter(self):
-        asyncio.run(self.twitter.run())
