@@ -7,7 +7,6 @@ logging_enabled = True
 enable_logging(logging_enabled)
 
 
-
 class ImgflipMemeGenerator():
     def __init__(self, imgflip_username, imgflip_password):
         self.imgflip_username = imgflip_username
@@ -22,7 +21,7 @@ class ImgflipMemeGenerator():
             'text': text,
             'no_watermark': no_watermark
         }
-        
+
         try:
             response = requests.post(url, data=payload)
             if response.status_code == 200:
@@ -38,9 +37,12 @@ class ImgflipMemeGenerator():
             log_message(logger, "error", self, f"Error generating a meme: {e}")
             return None
 
-
-
-    def generate_ai_meme(self, model="openai", template_id=None, prefix_text=None, no_watermark=False):
+    def generate_ai_meme(
+            self,
+            model="openai",
+            template_id=None,
+            prefix_text=None,
+            no_watermark=False):
         url = "https://api.imgflip.com/ai_meme"
         payload = {
             'username': self.imgflip_username,
@@ -65,5 +67,9 @@ class ImgflipMemeGenerator():
             else:
                 raise Exception(f"HTTP Error: {response.status_code}")
         except Exception as e:
-            log_message(logger, "error", self, f"Error generating an AI meme: {e}")
+            log_message(
+                logger,
+                "error",
+                self,
+                f"Error generating an AI meme: {e}")
             return None

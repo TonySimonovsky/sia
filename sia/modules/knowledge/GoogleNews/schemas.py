@@ -13,10 +13,10 @@ class GoogleNewsSearchMetadataSchema(BaseModel):
     request_url: HttpUrl
     html_url: HttpUrl
     json_url: HttpUrl
-    
+
     class Config:
         from_attributes = True
-    
+
 
 class GoogleNewsSearchParametersSchema(BaseModel):
     engine: str = "google_news"
@@ -41,7 +41,7 @@ class GoogleNewsSearchInformationSchema(BaseModel):
     class Config:
         from_attributes = True
 
-    
+
 class GoogleNewsSearchResultSchema(BaseModel):
     position: int
     title: str

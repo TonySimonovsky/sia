@@ -20,30 +20,35 @@ class SiaMessageGeneratedSchema(BaseModel):
         # orm_mode = True
         from_attributes = True
 
+
 class SiaMessageSchema(SiaMessageGeneratedSchema):
     id: str
     wen_posted: datetime = Field(default_factory=lambda: datetime.now())
     original_data: Optional[dict] = None
-    
+
     def printable(self):
         output_str = ""
         output_str += f"{self.author} [{self.wen_posted}] (id: {self.id}):\n"
         wrapped_content = textwrap.fill(self.content.strip(), width=70)
-        output_str += ' ' * 5 + wrapped_content.replace('\n', '\n' + ' ' * 5) + "\n"
+        output_str += ' ' * 5 + \
+            wrapped_content.replace('\n', '\n' + ' ' * 5) + "\n"
         return output_str
-    
+
     def printable_list(self, messages):
         output_str = ""
         for message in messages:
-            output_str += message.printable() + "\n\n" + "="*10 + "\n\n"
+            output_str += message.printable() + "\n\n" + "=" * 10 + "\n\n"
         return output_str
-    
+
     def select_by_id_from_list(self, messages, id):
-        return next((message for message in messages if message.id == id), None)
+        return next(
+            (message for message in messages if message.id == id),
+            None)
 
     class Config:
         # orm_mode = True
         from_attributes = True
+
 
 class SiaCharacterSettingsSchema(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))

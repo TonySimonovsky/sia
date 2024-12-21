@@ -8,7 +8,11 @@ from uuid import uuid4
 logging_enabled = True
 
 
-def setup_logging(logger_name='step_by_step', logs_folder="logs/", log_filename="step_by_step.log", level=logging.INFO):
+def setup_logging(
+        logger_name='step_by_step',
+        logs_folder="logs/",
+        log_filename="step_by_step.log",
+        level=logging.INFO):
     """Set up logging configuration."""
     if not os.path.exists(logs_folder):
         os.makedirs(logs_folder)
@@ -16,7 +20,8 @@ def setup_logging(logger_name='step_by_step', logs_folder="logs/", log_filename=
     log_path = os.path.join(logs_folder, log_filename)
 
     # Configure the root logger
-    logging.basicConfig(level=logging.WARNING)  # Set the root logger to WARNING level
+    # Set the root logger to WARNING level
+    logging.basicConfig(level=logging.WARNING)
 
     logger = logging.getLogger(logger_name)
     logger.setLevel(level)
@@ -27,10 +32,11 @@ def setup_logging(logger_name='step_by_step', logs_folder="logs/", log_filename=
 
     # Create a file handler
     file_handler = logging.FileHandler(log_path)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
 
-    disable_all_loggers_except(['step_by_step','speed','testing'])
+    disable_all_loggers_except(['step_by_step', 'speed', 'testing'])
 
     return logger
 
@@ -53,9 +59,12 @@ def log_message(logger, level, class_instance, message, user_id=None):
         frame_info = inspect.getframeinfo(current_frame.f_back)
         # print(f"frame_info: {frame_info}\n")
 
-        file_name = os.path.basename(frame_info.filename)  # Get only the base filename, not the full path
+        # Get only the base filename, not the full path
+        file_name = os.path.basename(frame_info.filename)
         line_number = frame_info.lineno
-        class_name = class_instance if isinstance(class_instance, str) else class_instance.__class__.__name__ if hasattr(class_instance, '__class__') else class_instance.__name__
+        class_name = class_instance if isinstance(
+            class_instance, str) else class_instance.__class__.__name__ if hasattr(
+            class_instance, '__class__') else class_instance.__name__
         # print(f"class_name: {class_name}\n")
 
         func_name = current_frame.f_back.f_code.co_name
@@ -63,7 +72,7 @@ def log_message(logger, level, class_instance, message, user_id=None):
         #     func_name = ''
         # else:
         #     func_name = current_frame.f_back.f_code.co_name
-        
+
         # print(f"func_name: {func_name}\n")
         # print(f"current_frame.f_back.f_code.co_name: {current_frame.f_back.f_code.co_name}\n")
 
@@ -72,9 +81,10 @@ def log_message(logger, level, class_instance, message, user_id=None):
             level = 'info'
 
         log_func = getattr(logger, level)
-        
+
         timestamp = time.strftime("%y%m%d-%H%M")
-        log_message = f"{timestamp} - {file_name}:{line_number} - {class_name}{' - '+func_name if func_name else ''} - {message}"
+        log_message = f"{timestamp} - {file_name}:{line_number} - {class_name}{
+            ' - ' + func_name if func_name else ''} - {message}"
 
         # Add user ID to the log message if it's provided
         if user_id is not None:
@@ -82,20 +92,23 @@ def log_message(logger, level, class_instance, message, user_id=None):
 
         log_func(log_message)
 
+
 def enable_logging(enable=True):
     """Enable or disable logging."""
     global logging_enabled
     logging_enabled = enable
 
 # Function to log time and update averages
+
+
 def time_spent(start_time, output_type="str") -> str | float:
     end_time = time.time()
     elapsed_time = end_time - start_time
-    if output_type=="str":
+    if output_type == "str":
         return f"{elapsed_time:.2f} seconds"
     else:
         return elapsed_time
-        
+
 
 # Decorator that logs the start and end of the execution of a function
 def log_execution(logger, logger_speed):
@@ -103,22 +116,27 @@ def log_execution(logger, logger_speed):
         @wraps(func)
         def wrapper(*args, **kwargs):
             exec_id = uuid4()
-            func_name = str(func.__name__)  # the name of the function being wrapped
+            # the name of the function being wrapped
+            func_name = str(func.__name__)
             instance = args[0]  # Assuming the first argument is 'self'
             class_name = instance.__class__.__name__  # Get the class name dynamically
-            
-            cls_and_func_str = str(class_name)+":"+func_name
-            
+
+            cls_and_func_str = str(class_name) + ":" + func_name
+
             log_message(logger, "info", cls_and_func_str, f"START ({exec_id})")
             func_start_time = time.time()
-            
+
             result = func(*args, **kwargs)
-            
+
             func_time_spent_str = time_spent(func_start_time)
-            log_message(logger, "info", cls_and_func_str, f"END ({exec_id}, spent {func_time_spent_str})")
-            log_message(logger_speed, "info", cls_and_func_str, f"({exec_id}, spent {func_time_spent_str})")
-            
+            log_message(
+                logger,
+                "info",
+                cls_and_func_str,
+                f"END ({exec_id}, spent {func_time_spent_str})")
+            log_message(logger_speed, "info", cls_and_func_str,
+                        f"({exec_id}, spent {func_time_spent_str})")
+
             return result
         return wrapper
     return decorator
-

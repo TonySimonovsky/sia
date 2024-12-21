@@ -19,35 +19,47 @@ from utils.logging_utils import enable_logging, log_message, setup_logging
 
 class GoogleNewsModule:
     module_name = "GoogleNewsModule"
-    
-    def __init__(self, sia: Sia = None, api_key: str = None, logging_enabled = True):
+
+    def __init__(
+            self,
+            sia: Sia = None,
+            api_key: str = None,
+            logging_enabled=True):
         self.sia = sia
         self.api_key = api_key or os.getenv("SEARCHAPI_API_KEY")
 
         # setup logging
         self.logger = setup_logging()
         enable_logging(logging_enabled)
-        
+
         # setup plugins
         self.plugins = {}
         plugins_folder = os.path.join(os.path.dirname(__file__), 'plugins')
-        log_message(self.logger, "info", self, f"Plugins folder: {plugins_folder}")
+        log_message(
+            self.logger,
+            "info",
+            self,
+            f"Plugins folder: {plugins_folder}")
         for filename in os.listdir(plugins_folder):
             if filename.endswith('.py') and filename != '__init__.py':
                 module_name = f'.plugins.{filename[:-3]}'
-                module = importlib.import_module(module_name, package=__package__)
+                module = importlib.import_module(
+                    module_name, package=__package__)
                 log_message(self.logger, "info", self, f"Module: {module}")
                 for attr in dir(module):
                     attr_value = getattr(module, attr)
-                    log_message(self.logger, "info", self, f"Attr value: {attr_value}")
-                    if isinstance(attr_value, type) and attr.endswith("Plugin"):
-                        self.plugins[attr_value.plugin_name] = attr_value(module=self)
-                        
+                    log_message(self.logger, "info", self,
+                                f"Attr value: {attr_value}")
+                    if isinstance(
+                            attr_value,
+                            type) and attr.endswith("Plugin"):
+                        self.plugins[attr_value.plugin_name] = attr_value(
+                            module=self)
+
         log_message(self.logger, "info", self, f"Plugins: {self.plugins}")
 
         # ensure tables exist
         self.ensure_tables_exist()
-
 
     def ensure_tables_exist(self):
         engine = self.sia.memory.engine
@@ -59,45 +71,64 @@ class GoogleNewsModule:
         if not inspector.has_table(GoogleNewsSearchResultModel.__tablename__):
             GoogleNewsSearchResultModel.__table__.create(engine)
 
-
     def _datetime_converter(self, o):
         if isinstance(o, datetime):
             return o.isoformat()
         raise TypeError(f"Type {o.__class__.__name__} not serializable")
 
-    
     def get_settings(self):
         session = self.sia.memory.Session()
         try:
-            settings_model = session.query(KnowledgeModuleSettingsModel).filter(KnowledgeModuleSettingsModel.module_name == self.module_name).first()
+            settings_model = session.query(KnowledgeModuleSettingsModel).filter(
+                KnowledgeModuleSettingsModel.module_name == self.module_name).first()
         finally:
             session.close()
         if settings_model:
             settings_schema = KnowledgeModuleSettingsSchema(
                 character_name_id=settings_model.character_name_id,
                 module_name=settings_model.module_name,
-                module_settings = settings_model.module_settings
+                module_settings=settings_model.module_settings
             )
-            log_message(self.logger, "info", self, f"Loaded settings for {self.module_name} module: {json.dumps(settings_schema.dict(), indent=4, default=self._datetime_converter)}")
+            log_message(
+                self.logger,
+                "info",
+                self,
+                f"Loaded settings for {
+                    self.module_name} module: {
+                    json.dumps(
+                        settings_schema.dict(),
+                        indent=4,
+                        default=self._datetime_converter)}")
             return settings_schema
         else:
-            module_settings = self.sia.character.knowledge_modules.get(self.module_name, {})
+            module_settings = self.sia.character.knowledge_modules.get(
+                self.module_name, {})
             settings_schema = KnowledgeModuleSettingsSchema(
                 module_name=self.module_name,
                 character_name_id=self.sia.character.name_id,
-                module_settings = {
+                module_settings={
                     **module_settings,
-                    "next_run_at": datetime.now(timezone.utc) - timedelta(seconds=1)
-                }
-            )
-            log_message(self.logger, "info", self, f"Created new settings for {self.module_name} module: {json.dumps(settings_schema.dict(), indent=4, default=self._datetime_converter)}")
+                    "next_run_at": datetime.now(
+                        timezone.utc) -
+                    timedelta(
+                        seconds=1)})
+            log_message(
+                self.logger,
+                "info",
+                self,
+                f"Created new settings for {
+                    self.module_name} module: {
+                    json.dumps(
+                        settings_schema.dict(),
+                        indent=4,
+                        default=self._datetime_converter)}")
             return settings_schema
-    
-        
+
     def update_settings(self, settings: KnowledgeModuleSettingsSchema):
         session = self.sia.memory.Session()
         try:
-            settings_model = session.query(KnowledgeModuleSettingsModel).filter(KnowledgeModuleSettingsModel.module_name == self.module_name).first()
+            settings_model = session.query(KnowledgeModuleSettingsModel).filter(
+                KnowledgeModuleSettingsModel.module_name == self.module_name).first()
             if settings_model:
                 # Convert datetime objects to strings in module_settings
                 settings_dict = settings.dict()
@@ -118,26 +149,39 @@ class GoogleNewsModule:
             session.commit()
         finally:
             session.close()
-    
-    
-    def search(self, parameters: GoogleNewsSearchParametersSchema) -> GoogleNewsSearchResultsSchema:
+
+    def search(
+            self,
+            parameters: GoogleNewsSearchParametersSchema) -> GoogleNewsSearchResultsSchema:
         url = "https://www.searchapi.io/api/v1/search"
 
         try:
-            response = requests.get(url, params = { **parameters.dict(), "api_key": self.api_key })
-            
+            response = requests.get(
+                url,
+                params={
+                    **parameters.dict(),
+                    "api_key": self.api_key})
+
             try:
-                return GoogleNewsSearchResultsSchema(**response.json())    
+                return GoogleNewsSearchResultsSchema(**response.json())
             except Exception as e:
-                log_message(self.logger, "error", self, f"Error searching Google News: {e}")
+                log_message(
+                    self.logger,
+                    "error",
+                    self,
+                    f"Error searching Google News: {e}")
                 return None
 
         except Exception as e:
-            log_message(self.logger, "error", self, f"Error searching Google News: {e}")
+            log_message(
+                self.logger,
+                "error",
+                self,
+                f"Error searching Google News: {e}")
             return None
-    
-    
-    def save_search_results_to_db(self, search_results: GoogleNewsSearchResultsSchema):
+
+    def save_search_results_to_db(
+            self, search_results: GoogleNewsSearchResultsSchema):
         # Create a new GoogleNewsSearchModel instance
         search_model = GoogleNewsSearchModel(
             metadata_id=search_results.search_metadata.id,
@@ -162,7 +206,7 @@ class GoogleNewsModule:
             time_taken_displayed=search_results.search_information.time_taken_displayed,
             detected_location=search_results.search_information.detected_location
         )
-        
+
         # Add the search model to the session
         session = self.sia.memory.Session()
         session.add(search_model)
@@ -182,36 +226,57 @@ class GoogleNewsModule:
                 search_id=search_model.id  # Use the ID from the flushed search_model
             )
             session.add(result_model)
-        
+
         # Commit the transaction
         session.commit()
-    
-    
+
     def run(self):
 
-        log_message(self.logger, "info", self, f"Running {self.module_name} module")
-        
+        log_message(
+            self.logger, "info", self, f"Running {
+                self.module_name} module")
+
         settings = self.get_settings()
-        
+
         next_run_at_str = settings.module_settings.get("next_run_at")
-        next_run_at = parser.isoparse(next_run_at_str) if isinstance(next_run_at_str, str) else next_run_at_str
-        
+        next_run_at = parser.isoparse(next_run_at_str) if isinstance(
+            next_run_at_str, str) else next_run_at_str
+
         # Check if next_run_at is in the future
         if next_run_at > datetime.now(timezone.utc):
-            log_message(self.logger, "info", self, f"Skipping {self.module_name} module because next_run_at is in the future (time now: {datetime.now(timezone.utc)}, next_run_at: {settings.module_settings.get('next_run_at')})")
+            log_message(
+                self.logger, "info", self, f"Skipping {
+                    self.module_name} module because next_run_at is in the future (time now: {
+                    datetime.now(
+                        timezone.utc)}, next_run_at: {
+                    settings.module_settings.get('next_run_at')})")
             return
 
-        searches_parameters = settings.module_settings.get("search_parameters", [])
-        log_message(self.logger, "info", self, f"Running {self.module_name} module with {len(searches_parameters)} search parameters:\n{json.dumps(searches_parameters, indent=4)}")
-        
+        searches_parameters = settings.module_settings.get(
+            "search_parameters", [])
+        log_message(
+            self.logger, "info", self, f"Running {
+                self.module_name} module with {
+                len(searches_parameters)} search parameters:\n{
+                json.dumps(
+                    searches_parameters, indent=4)}")
+
         for i, search_parameters in enumerate(searches_parameters):
-            search_results = self.search(GoogleNewsSearchParametersSchema(**search_parameters))
+            search_results = self.search(
+                GoogleNewsSearchParametersSchema(
+                    **search_parameters))
             # log_message(self.logger, "info", self, f"Search results {i+1}: {json.dumps(search_results.dict(), indent=4)}")
             if search_results:
                 self.save_search_results_to_db(search_results)
-        
-        settings.module_settings["next_run_at"] = datetime.now(timezone.utc) + timedelta(days=1/settings.module_settings.get("search_frequency", 1))
-        
-        log_message(self.logger, "info", self, f"Updated settings after running {self.module_name} module")
-        
+
+        settings.module_settings["next_run_at"] = datetime.now(
+            timezone.utc) + timedelta(days=1 / settings.module_settings.get("search_frequency", 1))
+
+        log_message(
+            self.logger,
+            "info",
+            self,
+            f"Updated settings after running {
+                self.module_name} module")
+
         self.update_settings(settings)

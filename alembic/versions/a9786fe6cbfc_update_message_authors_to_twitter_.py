@@ -33,6 +33,7 @@ def upgrade():
         """
     )
 
+
 def downgrade():
     # Optionally, reverse the changes
     op.execute(

@@ -4,9 +4,10 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
+
 class GoogleNewsSearchModel(Base):
     __tablename__ = 'knowledge_google_news_search'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     metadata_id = Column(String, unique=True, nullable=False)
     status = Column(String)
@@ -31,12 +32,14 @@ class GoogleNewsSearchModel(Base):
     detected_location = Column(String)
 
     # Relationship to organic results
-    results = relationship("GoogleNewsSearchResultModel", back_populates="search")
+    results = relationship(
+        "GoogleNewsSearchResultModel",
+        back_populates="search")
 
 
 class GoogleNewsSearchResultModel(Base):
     __tablename__ = 'knowledge_google_news_search_result'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     position = Column(Integer)
     title = Column(String)

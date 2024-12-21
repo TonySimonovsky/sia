@@ -1,7 +1,7 @@
 """Initial migration
 
 Revision ID: adfded2ef67e
-Revises: 
+Revises:
 Create Date: 2024-11-29 12:52:17.957076
 
 """
@@ -31,7 +31,11 @@ def upgrade():
         sa.Column('response_to', sa.String()),
         sa.Column('wen_posted', sa.DateTime(), default=sa.func.now()),
         sa.Column('original_data', sa.JSON()),
-        sa.Column('flagged', sa.Boolean(), nullable=True),  # Changed to Boolean
+        sa.Column(
+            'flagged',
+            sa.Boolean(),
+            nullable=True),
+        # Changed to Boolean
         sa.Column('message_metadata', sa.JSON())
     )
 
@@ -48,6 +52,7 @@ def upgrade():
     # Rename the new table to the original table name
     op.rename_table('message_temp', 'message')
 
+
 def downgrade():
     # Reverse the process for downgrade
     op.create_table(
@@ -61,7 +66,11 @@ def downgrade():
         sa.Column('response_to', sa.String()),
         sa.Column('wen_posted', sa.DateTime(), default=sa.func.now()),
         sa.Column('original_data', sa.JSON()),
-        sa.Column('flagged', sa.String(), nullable=True),  # Revert to original type
+        sa.Column(
+            'flagged',
+            sa.String(),
+            nullable=True),
+        # Revert to original type
         sa.Column('message_metadata', sa.JSON())
     )
 

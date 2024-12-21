@@ -5,9 +5,9 @@ from sia.clients.client import SiaClient
 
 
 class SiaTwitter(SiaClient):
-    
+
     def __init__(self, login_cookies):
-        super().__init__(client=Account(cookies=login_cookies)) 
+        super().__init__(client=Account(cookies=login_cookies))
 
     def publish_post(self, post):
         try:
