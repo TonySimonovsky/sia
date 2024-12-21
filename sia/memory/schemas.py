@@ -23,6 +23,7 @@ class SiaMessageGeneratedSchema(BaseModel):
 
 class SiaMessageSchema(SiaMessageGeneratedSchema):
     id: str
+    message_type: Optional[str] = Field(default="post")  # Can be "post" or "reply"
     wen_posted: datetime = Field(default_factory=lambda: datetime.now())
     original_data: Optional[dict] = None
 

@@ -32,6 +32,7 @@ class SiaMemory:
         self,
         message_id: str,
         message: SiaMessageGeneratedSchema,
+        message_type: str = None,
         original_data: dict = None,
     ) -> SiaMessageSchema:
         session = self.Session()
@@ -47,6 +48,7 @@ class SiaMemory:
             flagged=message.flagged,
             message_metadata=message.message_metadata,
             original_data=original_data,
+            message_type=message_type
         )
 
         try:
@@ -131,13 +133,7 @@ class SiaMemory:
 
         # if is_post is not None:
         if is_post:
-            # For posts: id matches conversation_id or conversation_id is None
-            query = query.filter(
-                or_(
-                    SiaMessageModel.id == SiaMessageModel.conversation_id,
-                    SiaMessageModel.conversation_id is None,
-                )
-            )
+            query = query.filter(SiaMessageModel.message_type == "post")
 
         if flagged != 2:
             query = query.filter_by(flagged=bool(flagged))
