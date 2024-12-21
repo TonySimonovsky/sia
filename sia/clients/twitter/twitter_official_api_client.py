@@ -4,47 +4,54 @@ import time
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-import tweepy
 from langchain.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
+
+import tweepy
 from tweepy import Forbidden
 from tweepy import Response as TwpResponse
 from tweepy import Tweet
 from tweepy import User as TwpUser
 
 from sia.character import SiaCharacter
-from sia.clients.client import SiaClient
 from sia.memory.memory import SiaMemory
 from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
 from utils.logging_utils import enable_logging, log_message, setup_logging
 
+from sia.clients.client_interface import SiaClientInterface
 
-class SiaTwitterOfficial(SiaClient):
+
+class SiaTwitterOfficial(SiaClientInterface):
 
     def __init__(
         self,
+        sia,
         api_key,
         api_secret_key,
         access_token,
         access_token_secret,
         bearer_token,
-        sia=None,
         character: SiaCharacter = None,
         memory: SiaMemory = None,
         logging_enabled=True,
         testing=False,
     ):
+        
+        self.client = tweepy.Client(
+            consumer_key=api_key,
+            consumer_secret=api_secret_key,
+            access_token=access_token,
+            access_token_secret=access_token_secret,
+            bearer_token=bearer_token,
+            wait_on_rate_limit=True,
+        )
+        
         super().__init__(
-            client=tweepy.Client(
-                consumer_key=api_key,
-                consumer_secret=api_secret_key,
-                access_token=access_token,
-                access_token_secret=access_token_secret,
-                bearer_token=bearer_token,
-                wait_on_rate_limit=True,
-            )
+            sia=sia,
+            logging_enabled=logging_enabled,
+            client=self.client
         )
 
         # self.client_dict_output = tweepy.Client(
@@ -72,11 +79,11 @@ class SiaTwitterOfficial(SiaClient):
         self.character = character
         self.sia = sia
 
-    def publish_post(
+    def publish_message(
         self,
-        post: SiaMessageGeneratedSchema,
+        message: SiaMessageGeneratedSchema,
         media: dict = [],
-        in_reply_to_tweet_id: str = None,
+        in_reply_to_message_id: str = None,
     ) -> str:
 
         media_ids = None
@@ -86,17 +93,17 @@ class SiaTwitterOfficial(SiaClient):
                 media_ids.append(self.upload_media(m))
 
         try:
-            print(f"post: {post}")
+            print(f"message: {message}")
             print(f"media_ids: {media_ids}")
-            print(f"in_reply_to_tweet_id: {in_reply_to_tweet_id}")
+            print(f"in_reply_to_tweet_id: {in_reply_to_message_id}")
 
             response = self.client.create_tweet(
-                text=post.content,
+                text=message.content,
                 **({"media_ids": media_ids} if media_ids else {}),
                 # in_reply_to_tweet_id=in_reply_to_tweet_id
                 **(
-                    {"in_reply_to_tweet_id": in_reply_to_tweet_id}
-                    if in_reply_to_tweet_id
+                    {"in_reply_to_tweet_id": in_reply_to_message_id}
+                    if in_reply_to_message_id
                     else {}
                 ),
             )
@@ -212,7 +219,7 @@ class SiaTwitterOfficial(SiaClient):
 
         return tweets
 
-    def save_tweet_to_db(self, tweet: Tweet, author: TwpUser) -> SiaMessageSchema:
+    def save_tweet_to_db(self, tweet: Tweet, author: TwpUser, message_type: str = "reply") -> SiaMessageSchema:
 
         # check if the tweet is already in the database
         get_message_in_db = self.memory.get_messages(
@@ -247,7 +254,9 @@ class SiaTwitterOfficial(SiaClient):
                     message_to_add.flagged = 1
                     message_to_add.message_metadata = {"flagged": "test_data"}
                 message_in_db = self.memory.add_message(
-                    message_id=str(tweet.id), message=message_to_add
+                    message_id=str(tweet.id),
+                    message=message_to_add,
+                    message_type=message_type
                 )
                 return message_in_db
 
@@ -741,9 +750,9 @@ class SiaTwitterOfficial(SiaClient):
 
             if post or media:
                 print(f"Generated post: {len(post.content)} characters")
-                tweet_id = self.publish_post(post, media)
+                tweet_id = self.publish_message(post, media)
                 if tweet_id and tweet_id is not Forbidden:
-                    self.memory.add_message(message_id=tweet_id, message=post)
+                    self.memory.add_message(message_id=tweet_id, message=post, message_type="post")
 
                     character_settings.character_settings = {
                         "twitter": {
@@ -854,11 +863,13 @@ class SiaTwitterOfficial(SiaClient):
                         )
                         continue
 
-                    tweet_id = self.publish_post(
-                        post=generated_response, in_reply_to_tweet_id=r.id
+                    tweet_id = self.publish_message(
+                        post=generated_response, in_reply_to_message_id=r.id
                     )
                     self.memory.add_message(
-                        message_id=tweet_id, message=generated_response
+                        message_id=tweet_id,
+                        message=generated_response,
+                        message_type="reply"
                     )
 
                     if isinstance(tweet_id, Forbidden):
@@ -1034,8 +1045,8 @@ class SiaTwitterOfficial(SiaClient):
 
             metadata = {}
             if not self.testing:
-                tweet_id = self.publish_post(
-                    ai_response, media=None, in_reply_to_tweet_id=tweet_to_respond.id
+                tweet_id = self.publish_message(
+                    ai_response, media=None, in_reply_to_message_id=tweet_to_respond.id
                 )
 
                 log_message(
@@ -1067,6 +1078,7 @@ class SiaTwitterOfficial(SiaClient):
                     wen_posted=datetime.now(timezone.utc),
                     flagged=int(self.testing),
                     metadata=metadata,
+                    message_type="reply"
                 ),
             )
 
@@ -1172,7 +1184,7 @@ class SiaTwitterOfficial(SiaClient):
 
             #     if post or media:
             #         print(f"Generated post: {len(post.content)} characters")
-            #         tweet_id = self.publish_post(post, media)
+            #         tweet_id = self.publish_message(post, media)
             #         if tweet_id and tweet_id is not Forbidden:
             #             self.memory.add_message(message_id=tweet_id, message=post)
 
@@ -1223,7 +1235,7 @@ class SiaTwitterOfficial(SiaClient):
             #                 print(f"No response generated for reply: {r}")
             #                 continue
             #             print(f"Generated response: {len(generated_response.content)} characters")
-            #             tweet_id = self.sia.twitter.publish_post(post=generated_response, in_reply_to_tweet_id=r.id)
+            #             tweet_id = self.sia.twitter.publish_message(post=generated_response, in_reply_to_tweet_id=r.id)
             #             self.memory.add_message(message_id=tweet_id, message=generated_response)
             #             replies_sent += 1
             #             if isinstance(tweet_id, Forbidden):
