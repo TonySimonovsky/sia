@@ -12,15 +12,14 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
 
-from sia.sia import Sia
-from sia.modules.knowledge.GoogleNews.google_news import GoogleNewsModule
-from sia.memory.schemas import SiaMessageGeneratedSchema
+load_dotenv()
 
 from tweepy import Forbidden
 
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from sia.memory.schemas import SiaMessageGeneratedSchema
+from sia.sia import Sia
+from utils.logging_utils import enable_logging, setup_logging
 
 logger = setup_logging()
 logging_enabled = True

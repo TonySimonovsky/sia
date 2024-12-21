@@ -1,6 +1,7 @@
 import requests
 
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from utils.logging_utils import enable_logging, log_message, setup_logging
+
 logger = setup_logging()
 enable_logging(True)
 
@@ -18,6 +19,7 @@ def save_image_from_url(image_url, save_path):
 
 
 from langchain_community.utilities.dalle_image_generator import DallEAPIWrapper
+
 
 def generate_image_dalle(input_prompt):
     try:

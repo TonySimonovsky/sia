@@ -1,32 +1,28 @@
-import datetime
-from datetime import timezone
-import time
-import random
-import os
-from uuid import uuid4
-from pydantic import BaseModel
 import asyncio
-import threading
+import datetime
 import json
-
-from sia.character import SiaCharacter
-from sia.clients.client import SiaClient
-from sia.memory.memory import SiaMemory
-from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
-from sia.schemas.schemas import ResponseFilteringResultLLMSchema
-from sia.clients.twitter.twitter_official_api_client import SiaTwitterOfficial
-from sia.clients.telegram.telegram_client import SiaTelegram
-from sia.modules.knowledge.models_db import KnowledgeModuleSettingsModel
-
-from plugins.imgflip_meme_generator import ImgflipMemeGenerator
+import os
+import random
+import threading
+import time
+from datetime import timezone
+from uuid import uuid4
 
 from langchain.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 
+from plugins.imgflip_meme_generator import ImgflipMemeGenerator
+from sia.character import SiaCharacter
+from sia.clients.client import SiaClient
+from sia.clients.telegram.telegram_client import SiaTelegram
+from sia.clients.twitter.twitter_official_api_client import SiaTwitterOfficial
+from sia.memory.memory import SiaMemory
+from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
+from sia.modules.knowledge.models_db import KnowledgeModuleSettingsModel
+from sia.schemas.schemas import ResponseFilteringResultLLMSchema
 from utils.etc_utils import generate_image_dalle, save_image_from_url
-from utils.logging_utils import setup_logging, log_message, enable_logging
-
+from utils.logging_utils import enable_logging, log_message, setup_logging
 
 
 class Sia:
@@ -181,7 +177,7 @@ class Sia:
             
             log_message(self.logger, "info", self, f"Generated post with Anthropic: {generated_post}")
             
-        except Exception as e:
+        except Exception:
             
             try:
                 llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
@@ -392,7 +388,7 @@ class Sia:
 
             generated_response = ai_chain.invoke(ai_input)
             
-        except Exception as e:
+        except Exception:
             
             try:
                 llm = ChatOpenAI(model="gpt-4o", temperature=0.0)

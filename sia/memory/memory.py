@@ -1,12 +1,16 @@
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, asc, desc, or_, and_, select
-from .models_db import SiaMessageModel, SiaCharacterSettingsModel, Base
-from .schemas import SiaMessageSchema, SiaMessageGeneratedSchema, SiaCharacterSettingsSchema
-from sia.character import SiaCharacter
 import json
 import textwrap
 
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from sqlalchemy import and_, asc, create_engine, desc, or_, select
+from sqlalchemy.orm import sessionmaker
+
+from sia.character import SiaCharacter
+from utils.logging_utils import enable_logging, log_message, setup_logging
+
+from .models_db import Base, SiaCharacterSettingsModel, SiaMessageModel
+from .schemas import (SiaCharacterSettingsSchema, SiaMessageGeneratedSchema,
+                      SiaMessageSchema)
+
 
 class SiaMemory:
 

@@ -1,10 +1,9 @@
+import inspect
 import logging
 import os
-import inspect
 import time
 from functools import wraps
 from uuid import uuid4
-
 
 logging_enabled = True
 

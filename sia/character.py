@@ -1,9 +1,10 @@
-import json
-import time
-import random
 import datetime
+import json
+import random
+import time
 
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from utils.logging_utils import enable_logging, log_message, setup_logging
+
 
 class SiaCharacter:
     

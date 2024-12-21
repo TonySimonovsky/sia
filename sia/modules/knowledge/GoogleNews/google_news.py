@@ -1,22 +1,20 @@
-import os
 import importlib
-from datetime import datetime, timedelta, timezone
-from dateutil import parser
-import requests
 import json
+import os
+from datetime import datetime, timedelta, timezone
 
+import requests
+from dateutil import parser
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session
 
-from sia.sia import Sia
-
-from sia.modules.knowledge.schemas import KnowledgeModuleSettingsSchema
+from sia.modules.knowledge.GoogleNews.models_db import (
+    GoogleNewsSearchModel, GoogleNewsSearchResultModel)
+from sia.modules.knowledge.GoogleNews.schemas import (
+    GoogleNewsSearchParametersSchema, GoogleNewsSearchResultsSchema)
 from sia.modules.knowledge.models_db import KnowledgeModuleSettingsModel
-from sia.modules.knowledge.GoogleNews.schemas import GoogleNewsSearchMetadataSchema, GoogleNewsSearchParametersSchema, GoogleNewsSearchInformationSchema, GoogleNewsSearchResultSchema, GoogleNewsSearchResultsSchema
-from sia.modules.knowledge.GoogleNews.models_db import GoogleNewsSearchModel, GoogleNewsSearchResultModel
-
-from utils.logging_utils import setup_logging, log_message, enable_logging
-
+from sia.modules.knowledge.schemas import KnowledgeModuleSettingsSchema
+from sia.sia import Sia
+from utils.logging_utils import enable_logging, log_message, setup_logging
 
 
 class GoogleNewsModule:

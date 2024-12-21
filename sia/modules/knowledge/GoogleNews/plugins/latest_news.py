@@ -1,28 +1,17 @@
-from datetime import datetime, timedelta, timezone
-import random
 import json
+import random
+from datetime import datetime, timedelta, timezone
 
+from langchain.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 from sqlalchemy.orm.attributes import flag_modified
 
-from sia.modules.knowledge.GoogleNews.schemas import (
-    GoogleNewsSearchMetadataSchema,
-    GoogleNewsSearchParametersSchema,
-    GoogleNewsSearchInformationSchema,
-    GoogleNewsSearchResultSchema
-)
 from sia.modules.knowledge.GoogleNews.models_db import (
-    GoogleNewsSearchModel, 
-    GoogleNewsSearchResultModel
-)
-from sia.modules.knowledge.schemas import KnowledgeModuleSettingsSchema
+    GoogleNewsSearchModel, GoogleNewsSearchResultModel)
+from sia.modules.knowledge.GoogleNews.schemas import \
+    GoogleNewsSearchResultSchema
 from sia.modules.knowledge.models_db import KnowledgeModuleSettingsModel
-
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-
-from utils.logging_utils import setup_logging, log_message, enable_logging
-
-
+from utils.logging_utils import enable_logging, setup_logging
 
 
 class LatestNewsPlugin:

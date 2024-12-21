@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, JSON, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from uuid import uuid4
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, String
+from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 

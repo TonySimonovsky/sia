@@ -1,5 +1,3 @@
-import os
-import json
 
 from twitter.account import Account
 

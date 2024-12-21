@@ -1,11 +1,13 @@
 import asyncio
+
 from telegram import Bot, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram.error import TelegramError, Conflict, NetworkError
+from telegram.error import Conflict, NetworkError, TelegramError
+from telegram.ext import (ApplicationBuilder, CallbackContext, CommandHandler,
+                          MessageHandler, filters)
+
 from sia.clients.client import SiaClient
 from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
-
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from utils.logging_utils import enable_logging, log_message, setup_logging
 
 
 class SiaTelegram(SiaClient):
@@ -66,7 +68,7 @@ class SiaTelegram(SiaClient):
             original_user = original_message.from_user
 
             # Extract user ID and username of the original message sender
-            original_user_id = original_user.id
+            original_user.id
             original_username = original_user.username or original_user.first_name
             
             if original_username == self.sia.character.platform_settings.get("telegram", {}).get("username", "<no bot username>"):

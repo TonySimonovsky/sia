@@ -1,22 +1,12 @@
-import time
 import asyncio
 import os
-import random
-from datetime import datetime
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from sia.sia import Sia
-from sia.character import SiaCharacter
-from sia.memory.memory import SiaMemory
-from sia.clients.telegram.telegram_client import SiaTelegram
-from sia.clients.twitter.twitter_official_api_client import SiaTwitterOfficial
-from sia.modules.knowledge.GoogleNews.google_news import GoogleNewsModule
-
-from tweepy import Forbidden
-
-from utils.logging_utils import setup_logging, log_message, enable_logging
+from utils.logging_utils import enable_logging, setup_logging
 
 logger = setup_logging()
 logging_enabled = True

@@ -1,6 +1,6 @@
 import requests
 
-from utils.logging_utils import log_message, setup_logging, enable_logging
+from utils.logging_utils import enable_logging, log_message, setup_logging
 
 logger = setup_logging()
 logging_enabled = True

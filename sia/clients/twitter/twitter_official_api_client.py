@@ -1,27 +1,24 @@
-import os
-import json
-import time
 import random
+import textwrap
+import time
 from datetime import datetime, timedelta, timezone
-
 from uuid import uuid4
 
 import tweepy
-from tweepy import Tweet, Forbidden, User as TwpUser, Response as TwpResponse
-
-from pydantic import BaseModel
-
-import textwrap
-
-from sia.clients.client import SiaClient
-from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
-from sia.memory.memory import SiaMemory
-from sia.character import SiaCharacter
-from utils.logging_utils import setup_logging, log_message, enable_logging
-
 from langchain.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+from tweepy import Forbidden
+from tweepy import Response as TwpResponse
+from tweepy import Tweet
+from tweepy import User as TwpUser
+
+from sia.character import SiaCharacter
+from sia.clients.client import SiaClient
+from sia.memory.memory import SiaMemory
+from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
+from utils.logging_utils import enable_logging, log_message, setup_logging
 
 
 class SiaTwitterOfficial(SiaClient):
@@ -536,7 +533,7 @@ class SiaTwitterOfficial(SiaClient):
 
             decision = ai_chain.invoke(ai_input)
             
-        except Exception as e:
+        except Exception:
             
             try:
                 llm = ChatOpenAI(model="gpt-4o", temperature=0.0)

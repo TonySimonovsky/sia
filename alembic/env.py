@@ -1,15 +1,13 @@
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-
 # Import your models here
 from sia.memory.models_db import Base  # Adjust the import path as necessary
 
-from dotenv import load_dotenv
 load_dotenv(".env")
 
 # this is the Alembic Config object, which provides
