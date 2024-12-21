@@ -10,19 +10,20 @@ from telegram.ext import (
     filters,
 )
 
-from sia.clients.client import SiaClient
 from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
 from utils.logging_utils import enable_logging, log_message, setup_logging
 
+from sia.clients.client_interface import SiaClientInterface
 
-class SiaTelegram(SiaClient):
+
+class SiaTelegram(SiaClientInterface):
     platform_name = "telegram"
 
-    def __init__(self, sia, tg_bot_token, chat_id=None, logging_enabled=True):
-        super().__init__(client=None)
-        self.tg_bot_token = tg_bot_token
-        self.bot = Bot(token=self.tg_bot_token)
-        self.application = ApplicationBuilder().token(tg_bot_token).build()
+    def __init__(self, sia, bot_token, chat_id=None, logging_enabled=True):
+        super().__init__(sia=sia, logging_enabled=logging_enabled)
+        self.bot_token = bot_token
+        self.bot = Bot(token=self.bot_token)
+        self.application = ApplicationBuilder().token(bot_token).build()
         self.chat_id = (
             chat_id  # Set this to the chat ID where you want to post messages
         )
@@ -64,7 +65,8 @@ class SiaTelegram(SiaClient):
         )
 
         self.sia.memory.add_message(
-            message_id=f"{chat_id}-{update.message.message_id}", message=message
+            message_id=f"{chat_id}-{update.message.message_id}",
+            message=message
         )
 
         print(
