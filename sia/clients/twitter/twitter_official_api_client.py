@@ -36,13 +36,13 @@ class SiaTwitterOfficial(SiaClient):
             )
         )
 
-        self.client_dict_output = tweepy.Client(
-            consumer_key=api_key, consumer_secret=api_secret_key,
-            access_token=access_token, access_token_secret=access_token_secret,
-            bearer_token=bearer_token,
-            wait_on_rate_limit=True,
-            return_type=dict
-        )
+        # self.client_dict_output = tweepy.Client(
+        #     consumer_key=api_key, consumer_secret=api_secret_key,
+        #     access_token=access_token, access_token_secret=access_token_secret,
+        #     bearer_token=bearer_token,
+        #     wait_on_rate_limit=True,
+        #     return_type=dict
+        # )
         
         self.testing = testing
         
@@ -101,10 +101,10 @@ class SiaTwitterOfficial(SiaClient):
         return media.media_id
 
 
-    def get_my_tweet_ids(self):
-        log_message(self.logger, "info", self, f"Getting my tweet ids for {self.character.twitter_username}")
-        my_tweets = self.memory.get_messages(platform="twitter", author=self.character.twitter_username)
-        return [tweet.id for tweet in my_tweets]
+    # def get_my_tweet_ids(self):
+    #     log_message(self.logger, "info", self, f"Getting my tweet ids for {self.character.twitter_username}")
+    #     my_tweets = self.memory.get_messages(platform="twitter", author=self.character.twitter_username)
+    #     return [tweet.id for tweet in my_tweets]
     
     
     def tweet_to_message(self, tweet: Tweet, author: TwpUser) -> SiaMessageGeneratedSchema:
@@ -128,74 +128,6 @@ class SiaTwitterOfficial(SiaClient):
             max_reply = max(replies, key=lambda reply: reply.id)
             return None if max_reply.id == "None" else max_reply.id
 
-
-    def get_new_replies_to_my_tweets(self) -> list[SiaMessageSchema]:
-        since_id = self.get_last_retrieved_reply_id()
-        log_message(self.logger, "info", self, f"since_id: {since_id}")
-
-        messages = []
-        
-        try:
-            search_inputs = {
-                "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
-                "client": self.client
-            }
-            if since_id:
-                search_inputs["since_id"] = since_id
-            
-            new_replies_to_my_tweets = self.search_tweets(**search_inputs)
-        except Exception as e:
-            log_message(self.logger, "error", self, f"Error getting replies: {e}")
-            return []
-        
-        if not new_replies_to_my_tweets.data:
-            return []
-        
-        for reply in new_replies_to_my_tweets.data:
-            
-            log_message(self.logger, "info", self, f"processing new mention: {reply}")
-            
-            # exclude replies from the character itself
-            author = next((user.username for user in new_replies_to_my_tweets.includes['users'] if user.id == reply.author_id), None)
-            log_message(self.logger, "info", self, f"author of the received reply: {author}")
-            if author == self.character.twitter_username:
-                continue
-            
-            try:
-                from openai import OpenAI
-                client = OpenAI()
-                moderation_response = client.moderations.create(
-                    model="omni-moderation-latest",
-                    input=reply.text,
-                )
-                flagged = moderation_response.results[0].flagged
-                if flagged:
-                    log_message(self.logger, "info", self, f"flagged reply: {reply.text}")
-            except Exception as e:
-                log_message(self.logger, "error", self, f"Error moderating reply: {e}")
-                flagged = False
-
-            try:
-                message = self.memory.add_message(
-                    message_id=str(reply.id),
-                    message=SiaMessageGeneratedSchema(
-                        conversation_id=str(reply.data['conversation_id']),
-                        content=reply.text,
-                        platform="twitter",
-                        author=next(user.username for user in new_replies_to_my_tweets.includes['users'] if user.id == reply.author_id),
-                        character=self.character.name,
-                        response_to=str(next((ref.id for ref in reply.referenced_tweets if ref.type == "replied_to"), None)) if reply.referenced_tweets else None,
-                        wen_posted=reply.created_at,
-                        flagged=int(flagged),
-                        metadata=moderation_response
-                    ),
-                    original_data=reply.data
-                )
-                messages.append(message)
-            except Exception as e:
-                log_message(self.logger, "error", self, f"Error adding message: {e}")
-
-        return messages
 
 
     def get_conversation(self, conversation_id: str) -> list[SiaMessageSchema]:
@@ -237,10 +169,43 @@ class SiaTwitterOfficial(SiaClient):
         return tweets
 
 
+    def save_tweet_to_db(self, tweet: Tweet, author: TwpUser) -> SiaMessageSchema:
+        
+        # check if the tweet is already in the database
+        get_message_in_db = self.memory.get_messages(
+            id=str(tweet.id),
+            flagged=2 # getting both flagged and unflagged messages
+        )
+        
+        try:
+            
+            # if the tweet is already in the database
+            #   we still need to add it to the return list
+            if get_message_in_db:
+                log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database, returning it without adding to the database")
+                # if exclude_responded_to:
+                #     message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
+                #     if message_responses_in_db:
+                #         log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
+                #         continue
+                return get_message_in_db[0]
+            
+            # if the tweet is not in the database
+            else:
+                # convert tweet object
+                #   to message object
+                message_to_add = self.tweet_to_message(tweet=tweet, author=author)
+                if self.testing:
+                    message_to_add.flagged = 1
+                    message_to_add.message_metadata = { "flagged": "test_data" }
+                message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
+                return message_in_db
+            
+        except Exception as e:
+            log_message(self.logger, "error", self, f"Error saving tweet to database: {e}")
+        
 
-
-
-    def save_tweets_to_db(self, tweets: TwpResponse) -> list[SiaMessageSchema]:
+    def save_tweets_to_db(self, tweets: TwpResponse, exclude_own=True, exclude_responded_to=False) -> list[SiaMessageSchema]:
         messages = []
         # for tweet in tweets.data:
         #     self.memory.add_message(message_id=tweet.id, message=self.tweet_to_message(tweet, author))
@@ -250,42 +215,99 @@ class SiaTwitterOfficial(SiaClient):
             log_message(self.logger, "info", self, f"No tweets to add")
             return []
 
-        for tweet in tweets.data:
-            
-            log_message(self.logger, "info", self, f"[save_tweets_to_db] Processing tweet: {tweet.id}")
 
+        for tweet in tweets.data:
             author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
-            
-            message_to_add = self.tweet_to_message(tweet, author)
-            if self.testing:
-                message_to_add.flagged = 1
-                message_to_add.message_metadata = { "flagged": "test_data" }
+            log_message(self.logger, "info", self, f"[save_tweets_to_db] Processing tweet: {tweet.id}, author {author}")
 
-            get_message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
+
+            # exclude tweets from the character themselves
+            #   as they've been added when creting and posting them
+            if exclude_own:
+                log_message(self.logger, "info", self, f"author of the tweet: {author}")
+                if author == self.character.twitter_username:
+                    continue
+
             
+            # reasoning about if we need to flag the tweet
             try:
-                if get_message_in_db:
-                    log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
-                    messages.append(get_message_in_db[0])
+                from openai import OpenAI
+                client = OpenAI()
+                moderation_response = client.moderations.create(
+                    model="omni-moderation-latest",
+                    input=tweet.text,
+                )
+                flagged = moderation_response.results[0].flagged
+                if flagged:
+                    log_message(self.logger, "info", self, f"The tweet (id {tweet.id}) ({tweet.text.replace('\n',' ')}) was flagged: {moderation_response.results}")
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error moderating tweet: {e}")
+                flagged = False
+
+
+            tweet_message = self.save_tweet_to_db(tweet=tweet, author=author)
+            
+            
+            # if we need to exclude from the return list
+            #    the tweets that have already
+            #    been responded to by the character, 
+            if exclude_responded_to:
+                message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), author=self.character.twitter_username, flagged=2)
+                if message_responses_in_db:
+                    log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
+                    continue
                 else:
-                    message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
-                    messages.append(message_in_db)
+                    if tweet_message:
+                        messages.append(tweet_message)
+            else:
+                if tweet_message:
+                    messages.append(tweet_message)
+
+            
+            # get_message_in_db = self.memory.get_messages(
+            #     id=str(tweet.id),
+            #     flagged=2 # getting both flagged and unflagged messages
+            # )
+            # try:
+            #     # if the tweet is already in the database
+            #     #   we still need to add it to the return list
+            #     if get_message_in_db:
+            #         log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
+            #         if exclude_responded_to:
+            #             message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
+            #             if message_responses_in_db:
+            #                 log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
+            #                 continue
+            #         messages.append(get_message_in_db[0])
+            #     else:
+            #         # convert tweet object
+            #         #   to message object
+            #         message_to_add = self.tweet_to_message(tweet, author)
+            #         if self.testing:
+            #             message_to_add.flagged = 1
+            #             message_to_add.message_metadata = { "flagged": "test_data" }
+            #         message_in_db = self.memory.add_message(message_id=str(tweet.id), message=message_to_add)
+            #         messages.append(message_in_db)
                 
-            except Exception as e:
-                print(f"Error adding message: {e}")
-                try:
-                    message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
-                    message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
-                    # only add to return if we haven't responded to this tweet yet
-                    if message_in_db and not message_responses_in_db:
-                        log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
-                        messages.append(message_in_db[0])
-                    else:
-                        log_message(self.logger, "info", self, f"Message with id {tweet.id} not found in the database")
-                        continue
-                except Exception as e:
-                    log_message(self.logger, "error", self, f"Error retrieving message: {e}")
+            # except Exception as e:
+            #     print(f"Error adding message: {e}")
+                # try:
+                #     message_in_db = self.memory.get_messages(id=str(tweet.id), flagged=2)
+                #     if exclude_responded_to:
+                #         message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
+                #     else:
+                #         message_responses_in_db = []
+                #     # only add to return if we haven't responded to this tweet yet
+                #     if message_in_db and not message_responses_in_db:
+                #         log_message(self.logger, "info", self, f"Message with id {tweet.id} already exists in the database")
+                #         messages.append(message_in_db[0])
+                #     else:
+                #         log_message(self.logger, "info", self, f"Message with id {tweet.id} not found in the database")
+                #         continue
+                # except Exception as e:
+                #     log_message(self.logger, "error", self, f"Error retrieving message: {e}")
 
+            
             # also add all referenced tweets
             if tweet.referenced_tweets:
                 for ref_tweet in tweet.referenced_tweets:
@@ -297,78 +319,138 @@ class SiaTwitterOfficial(SiaClient):
                             if included_tweet.id == ref_tweet_id:
                                 try:
                                     author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
-
-                                    message_to_add = self.tweet_to_message(included_tweet, author)
-                                    if self.testing:
-                                        message_to_add.flagged = 1
-                                        message_to_add.message_metadata = { "flagged": "test_data" }
-                                        
-                                    get_message_in_db = self.memory.get_messages(id=str(included_tweet.id), flagged=2)
-                                    if get_message_in_db:
-                                        log_message(self.logger, "info", self, f"Message with id {included_tweet.id} already exists in the database")
-                                        messages.append(get_message_in_db[0])
-                                    else:
-                                        message_in_db = self.memory.add_message(message_id=str(included_tweet.id), message=message_to_add)
-                                        messages.append(message_in_db)
-
+                                    tweet_message = self.save_tweet_to_db(tweet=included_tweet, author=author)
+                                    messages.append(tweet_message)
 
                                 except Exception as e:
-                                    log_message(self.logger, "error", self, f"Error adding message: {e}")
+                                    log_message(self.logger, "error", self, f"Error adding referenced tweet: {e}")
         
         return messages
 
 
-    # 2024.12.17: deprecated, now using search_tweets+save_tweets_to_db instead
-    def search_and_collect_tweets(self, query: str, start_time: datetime = None, end_time: datetime = None) -> list[SiaMessageSchema]:
-        tweets = self.client.search_recent_tweets(
-            query=query,
-            tweet_fields=[
-                "conversation_id",
-                "created_at",
-                "in_reply_to_user_id",
-                "public_metrics"
-            ],
-            max_results=30,
-            expansions=["author_id","referenced_tweets.id"],
-            start_time=start_time,
-            end_time=end_time
-        )
-        
-        messages = []
-        
-        if not tweets.data:
-            log_message(self.logger, "info", self, f"No tweets found for query: {query}")
-            return []
-        
-        for tweet in tweets.data:
-            
-            log_message(self.logger, "info", self, f"Processing tweet: {tweet.id}")
-            
-            try:
-                author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
-                message_in_db = self.memory.add_message(message_id=tweet.id, message=self.tweet_to_message(tweet, author))
-                messages.append(message_in_db)
-            except Exception as e:
-                log_message(self.logger, "error", self, f"Error adding message: {e}")
-                continue
 
-            # also add all referenced tweets
-            if tweet.referenced_tweets:
-                for ref_tweet in tweet.referenced_tweets:
-                    # Get referenced tweet details
-                    ref_tweet_id = ref_tweet.id
-            
-                    if 'tweets' in tweets.includes:
-                        for included_tweet in tweets.includes['tweets']:
-                            if included_tweet.id == ref_tweet_id:
-                                try:
-                                    author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
-                                    message_in_db = self.memory.add_message(message_id=included_tweet.id, message=self.tweet_to_message(included_tweet, author))
-                                    messages.append(message_in_db)
-                                except Exception as e:
-                                    log_message(self.logger, "error", self, f"Error adding message: {e}")
+    # # 2024.12.21: deprecated, now using search_tweets+save_tweets_to_db instead
+    # def get_new_replies_to_my_tweets(self) -> list[SiaMessageSchema]:
+        # since_id = self.get_last_retrieved_reply_id()
+        # log_message(self.logger, "info", self, f"since_id: {since_id}")
+
+        # messages = []
         
-        return messages
+        # try:
+        #     search_inputs = {
+        #         "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
+        #         "client": self.client
+        #     }
+        #     if since_id:
+        #         search_inputs["since_id"] = since_id
+            
+        #     new_replies_to_my_tweets = self.search_tweets(**search_inputs)
+        # except Exception as e:
+        #     log_message(self.logger, "error", self, f"Error getting replies: {e}")
+        #     return []
+        
+        # if not new_replies_to_my_tweets.data:
+        #     return []
+        
+        # for reply in new_replies_to_my_tweets.data:
+            
+        #     log_message(self.logger, "info", self, f"processing new mention: {reply}")
+            
+        #     # exclude replies from the character itself
+        #     author = next((user.username for user in new_replies_to_my_tweets.includes['users'] if user.id == reply.author_id), None)
+        #     log_message(self.logger, "info", self, f"author of the received reply: {author}")
+        #     if author == self.character.twitter_username:
+        #         continue
+            
+        #     try:
+        #         from openai import OpenAI
+        #         client = OpenAI()
+        #         moderation_response = client.moderations.create(
+        #             model="omni-moderation-latest",
+        #             input=reply.text,
+        #         )
+        #         flagged = moderation_response.results[0].flagged
+        #         if flagged:
+        #             log_message(self.logger, "info", self, f"flagged reply: {reply.text}")
+        #     except Exception as e:
+        #         log_message(self.logger, "error", self, f"Error moderating reply: {e}")
+        #         flagged = False
+
+        #     try:
+        #         message = self.memory.add_message(
+        #             message_id=str(reply.id),
+        #             message=SiaMessageGeneratedSchema(
+        #                 conversation_id=str(reply.data['conversation_id']),
+        #                 content=reply.text,
+        #                 platform="twitter",
+        #                 author=next(user.username for user in new_replies_to_my_tweets.includes['users'] if user.id == reply.author_id),
+        #                 character=self.character.name,
+        #                 response_to=str(next((ref.id for ref in reply.referenced_tweets if ref.type == "replied_to"), None)) if reply.referenced_tweets else None,
+        #                 wen_posted=reply.created_at,
+        #                 flagged=int(flagged),
+        #                 metadata=moderation_response
+        #             ),
+        #             original_data=reply.data
+        #         )
+        #         messages.append(message)
+        #     except Exception as e:
+        #         log_message(self.logger, "error", self, f"Error adding message: {e}")
+
+        # return messages
+
+
+
+    # # 2024.12.17: deprecated, now using search_tweets+save_tweets_to_db instead
+    # def search_and_collect_tweets(self, query: str, start_time: datetime = None, end_time: datetime = None) -> list[SiaMessageSchema]:
+    #     tweets = self.client.search_recent_tweets(
+    #         query=query,
+    #         tweet_fields=[
+    #             "conversation_id",
+    #             "created_at",
+    #             "in_reply_to_user_id",
+    #             "public_metrics"
+    #         ],
+    #         max_results=30,
+    #         expansions=["author_id","referenced_tweets.id"],
+    #         start_time=start_time,
+    #         end_time=end_time
+    #     )
+        
+    #     messages = []
+        
+    #     if not tweets.data:
+    #         log_message(self.logger, "info", self, f"No tweets found for query: {query}")
+    #         return []
+        
+    #     for tweet in tweets.data:
+            
+    #         log_message(self.logger, "info", self, f"Processing tweet: {tweet.id}")
+            
+    #         try:
+    #             author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
+    #             message_in_db = self.memory.add_message(message_id=tweet.id, message=self.tweet_to_message(tweet, author))
+    #             messages.append(message_in_db)
+    #         except Exception as e:
+    #             log_message(self.logger, "error", self, f"Error adding message: {e}")
+    #             continue
+
+    #         # also add all referenced tweets
+    #         if tweet.referenced_tweets:
+    #             for ref_tweet in tweet.referenced_tweets:
+    #                 # Get referenced tweet details
+    #                 ref_tweet_id = ref_tweet.id
+            
+    #                 if 'tweets' in tweets.includes:
+    #                     for included_tweet in tweets.includes['tweets']:
+    #                         if included_tweet.id == ref_tweet_id:
+    #                             try:
+    #                                 author = self.get_user_by_id_from_twp_response(tweets, included_tweet.author_id)
+    #                                 message_in_db = self.memory.add_message(message_id=included_tweet.id, message=self.tweet_to_message(included_tweet, author))
+    #                                 messages.append(message_in_db)
+    #                             except Exception as e:
+    #                                 log_message(self.logger, "error", self, f"Error adding message: {e}")
+        
+    #     return messages
 
 
     @classmethod
@@ -405,17 +487,17 @@ class SiaTwitterOfficial(SiaClient):
         return output_str
 
 
-    def tweets_obj_add(self, tweets1, tweets2):
-        return TwpResponse(
-            data=tweets1.data + tweets2.data,
-            includes= { **tweets1.includes, **tweets2.includes },
-            errors=tweets1.errors + tweets2.errors,
-            meta= { **tweets1.meta, **tweets2.meta }
-        )
+    # def tweets_obj_add(self, tweets1, tweets2):
+    #     return TwpResponse(
+    #         data=tweets1.data + tweets2.data,
+    #         includes= { **tweets1.includes, **tweets2.includes },
+    #         errors=tweets1.errors + tweets2.errors,
+    #         meta= { **tweets1.meta, **tweets2.meta }
+    #     )
     
     
-    def find_tweet_by_id_in_twp_response(self, tweets, tweet_id):
-        return next((tweet for tweet in tweets.data if tweet.id == tweet_id), None)
+    # def find_tweet_by_id_in_twp_response(self, tweets, tweet_id):
+    #     return next((tweet for tweet in tweets.data if tweet.id == tweet_id), None)
 
 
     def decide_which_tweet_to_reply_to(self, tweets: list[SiaMessageSchema]) -> SiaMessageSchema:
@@ -476,13 +558,132 @@ class SiaTwitterOfficial(SiaClient):
         return tweet
 
 
-    def exclude_tweet_messages_already_engaged(self, tweets: list[SiaMessageSchema]) -> list[SiaMessageSchema]:
-        tweets_to_include = []
-        for tweet in tweets:
-            if tweet.id not in self.memory.get_conversation_ids():
-                tweets_to_include.append(tweet)
-        return tweets_to_include
+    # def exclude_tweet_messages_already_engaged(self, tweets: list[SiaMessageSchema]) -> list[SiaMessageSchema]:
+    #     tweets_to_include = []
+    #     for tweet in tweets:
+    #         if tweet.id not in self.memory.get_conversation_ids():
+    #             tweets_to_include.append(tweet)
+    #     return tweets_to_include
 
+
+    
+    def post(self):
+
+        character_settings = self.memory.get_character_settings()
+        
+        next_post_time = character_settings.character_settings.get('twitter', {}).get('next_post_time', 0)
+        next_post_datetime = datetime.fromtimestamp(next_post_time).strftime('%Y-%m-%d %H:%M:%S') if next_post_time else "N/A"
+        now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Current time: {now_time}")
+        next_post_time_seconds = next_post_time - time.time()
+        next_post_hours = next_post_time_seconds // 3600
+        next_post_minutes = (next_post_time_seconds % 3600) // 60
+        print(f"Next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
+        
+        
+        if self.character.platform_settings.get("twitter", {}).get("post", {}).get("enabled", False) and time.time() > next_post_time:
+            
+            post, media = self.sia.generate_post(
+                platform="twitter",
+                author=self.character.twitter_username,
+                character=self.character.name
+            )
+            
+            if post or media:
+                print(f"Generated post: {len(post.content)} characters")
+                tweet_id = self.publish_post(post, media)
+                if tweet_id and tweet_id is not Forbidden:
+                    self.memory.add_message(message_id=tweet_id, message=post)
+
+                    character_settings.character_settings = {
+                        "twitter": {
+                            "next_post_time": time.time() + self.character.platform_settings.get("twitter", {}).get("post_frequency", 2) * 3600
+                        }
+                    }
+                    self.memory.update_character_settings(character_settings)
+            else:
+                log_message(self.logger, "info", self, "No post or media generated.")
+
+            time.sleep(30) 
+               
+
+    def reply(self):
+        
+        if self.character.responding.get("enabled", True):
+            log_message(self.logger, "info", self, "Checking for new replies...")
+
+
+            # check for tweets
+            #   where I'm tagged
+            
+            since_id = self.get_last_retrieved_reply_id()
+            replies_search_inputs = {
+                "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
+                "client": self.client
+            }
+            if since_id:
+                replies_search_inputs["since_id"] = since_id
+            replies = self.search_tweets(**replies_search_inputs)
+            replies_messages = self.save_tweets_to_db(tweets=replies, exclude_own=True)
+            
+            
+            responses_sent = self.memory.get_messages(
+                platform="twitter",
+                character=self.character.name,
+                author=self.character.twitter_username,
+                sort_by="wen_posted",
+                sort_order="desc"
+            )
+            responses_sent_this_hour = len([r for r in responses_sent if r.wen_posted > datetime.now() - timedelta(hours=1)])
+            max_responses_an_hour = self.character.responding.get("responses_an_hour", 3)
+            log_message(self.logger, "info", self, f"Number of responses sent this hour: {responses_sent_this_hour}, max allowed: {max_responses_an_hour}")
+
+            
+            if replies_messages:
+                
+                # randomize the order of replies
+                replies_messages.sort(key=lambda x: random.random())
+                
+                for r in replies_messages:
+                    
+                    log_message(self.logger, "info", self, f"Processing reply: {r}")
+
+                    # skipping flagged
+                    if r.flagged:
+                        log_message(self.logger, "info", self, f"Skipping flagged reply: {r}")
+                        continue
+                    
+                    # stopping when max responses per hour is reached
+                    if responses_sent_this_hour >= max_responses_an_hour:
+                        log_message(self.logger, "info", self, f"Max number of responses sent this hour reached. Skipping remaining replies.")
+                        break
+                    
+                    # temporary:
+                    #   skipping conversations where
+                    #   we've already sent 3+ replies
+                    current_conversation = self.get_conversation(r.conversation_id)
+                    own_messages_count = sum(1 for msg in current_conversation if msg.author == self.character.twitter_username)
+                    if own_messages_count >= 3:
+                        log_message(self.logger, "info", self, f"Skipping conversation {r.conversation_id} as it already has {own_messages_count} replies from us.")
+                        continue
+
+
+                    generated_response = self.sia.generate_response(r)
+                    if not generated_response:
+                        log_message(self.logger, "error", self, f"No response generated")
+                        continue
+                    
+                    tweet_id = self.publish_post(post=generated_response, in_reply_to_tweet_id=r.id)
+                    self.memory.add_message(message_id=tweet_id, message=generated_response)
+                    
+                    if isinstance(tweet_id, Forbidden):
+                        log_message(self.logger, "error", self, f"Failed to send reply: {tweet_id}. Sleeping for 10 minutes.")
+                        time.sleep(600)
+                        
+                    time.sleep(random.randint(70, 90))
+
+            else:
+                log_message(self.logger, "info", self, "No new replies yet.")
 
 
     def engage(self, testing_rounds=3, search_period_hours=24):
@@ -534,10 +735,10 @@ class SiaTwitterOfficial(SiaClient):
             tweets_to_engage = []
             for search_query in self.character.platform_settings.get("twitter", {}).get("engage", {}).get("search_queries", []):
                 tweets = self.search_tweets(query=search_query, start_time=start_time, end_time=end_time, client=self.client)
-                tweets_messages = self.save_tweets_to_db(tweets)
+                tweets_messages = self.save_tweets_to_db(tweets=tweets, exclude_responded_to=True)
                 log_message(self.logger, "info", self, f"Found {len(tweets_messages)} tweets to engage with")
-                tweets_messages = self.exclude_tweet_messages_already_engaged(tweets_messages)
-                log_message(self.logger, "info", self, f"{len(tweets_messages)} tweets to engage with after excluding already engaged")
+                # tweets_messages = self.exclude_tweet_messages_already_engaged(tweets_messages)
+                # log_message(self.logger, "info", self, f"{len(tweets_messages)} tweets to engage with after excluding already engaged")
                 tweets_to_engage.extend(tweets_messages)
             if not tweets_to_engage:
                 log_message(self.logger, "info", self, f"No tweets found to engage with")
@@ -613,16 +814,16 @@ class SiaTwitterOfficial(SiaClient):
         
         while 1:
 
-            character_settings = self.memory.get_character_settings()
+            # character_settings = self.memory.get_character_settings()
             
-            next_post_time = character_settings.character_settings.get('twitter', {}).get('next_post_time', 0)
-            next_post_datetime = datetime.fromtimestamp(next_post_time).strftime('%Y-%m-%d %H:%M:%S') if next_post_time else "N/A"
-            now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"Current time: {now_time}")
-            next_post_time_seconds = next_post_time - time.time()
-            next_post_hours = next_post_time_seconds // 3600
-            next_post_minutes = (next_post_time_seconds % 3600) // 60
-            print(f"Next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
+            # next_post_time = character_settings.character_settings.get('twitter', {}).get('next_post_time', 0)
+            # next_post_datetime = datetime.fromtimestamp(next_post_time).strftime('%Y-%m-%d %H:%M:%S') if next_post_time else "N/A"
+            # now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # print(f"Current time: {now_time}")
+            # next_post_time_seconds = next_post_time - time.time()
+            # next_post_hours = next_post_time_seconds // 3600
+            # next_post_minutes = (next_post_time_seconds % 3600) // 60
+            # print(f"Next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
             
             
             
@@ -703,85 +904,85 @@ class SiaTwitterOfficial(SiaClient):
             
             # posting
             #   new tweet
-            if self.character.platform_settings.get("twitter", {}).get("post", {}).get("enabled", False) and time.time() > next_post_time:
-                
-                post, media = self.sia.generate_post(
-                    platform="twitter",
-                    author=self.character.twitter_username,
-                    character=self.character.name
-                )
-                
-                if post or media:
-                    print(f"Generated post: {len(post.content)} characters")
-                    tweet_id = self.publish_post(post, media)
-                    if tweet_id and tweet_id is not Forbidden:
-                        self.memory.add_message(message_id=tweet_id, message=post)
+            self.post()
 
-                        character_settings.character_settings = {
-                            "twitter": {
-                                "next_post_time": time.time() + self.character.platform_settings.get("twitter", {}).get("post_frequency", 2) * 3600
-                            }
-                        }
-                        self.memory.update_character_settings(character_settings)
-                else:
-                    log_message(self.logger, "info", self, "No post or media generated.")
+            # if self.character.platform_settings.get("twitter", {}).get("post", {}).get("enabled", False) and time.time() > next_post_time:
+                
+            #     post, media = self.sia.generate_post(
+            #         platform="twitter",
+            #         author=self.character.twitter_username,
+            #         character=self.character.name
+            #     )
+                
+            #     if post or media:
+            #         print(f"Generated post: {len(post.content)} characters")
+            #         tweet_id = self.publish_post(post, media)
+            #         if tweet_id and tweet_id is not Forbidden:
+            #             self.memory.add_message(message_id=tweet_id, message=post)
 
-                time.sleep(30)
+            #             character_settings.character_settings = {
+            #                 "twitter": {
+            #                     "next_post_time": time.time() + self.character.platform_settings.get("twitter", {}).get("post_frequency", 2) * 3600
+            #                 }
+            #             }
+            #             self.memory.update_character_settings(character_settings)
+            #     else:
+            #         log_message(self.logger, "info", self, "No post or media generated.")
+
+            #     time.sleep(30)
 
 
             # replying
             #   to mentions
+            self.reply()
             
-            replies_sent = 0
-            
-            if self.character.responding.get("enabled", True):
-                print("Checking for new replies...")
+            # if self.character.responding.get("enabled", True):
+            #     print("Checking for new replies...")
 
 
-                replies = self.get_new_replies_to_my_tweets()
-                if replies:
+            #     replies = self.get_new_replies_to_my_tweets()
+            #     if replies:
                     
-                    # randomize the order of replies
-                    replies.sort(key=lambda x: random.random())
+            #         # randomize the order of replies
+            #         replies.sort(key=lambda x: random.random())
                     
-                    for r in replies:
+            #         for r in replies:
                         
-                        max_responses_an_hour = character_settings.character_settings.get("responding", {}).get("responses_an_hour", 3)
-                        log_message(self.logger, "info", self, f"Replies sent during this hour: {replies_sent}, max allowed: {max_responses_an_hour}")
-                        if replies_sent >= max_responses_an_hour:
-                            break
+            #             max_responses_an_hour = character_settings.character_settings.get("responding", {}).get("responses_an_hour", 3)
+            #             log_message(self.logger, "info", self, f"Replies sent during this hour: {replies_sent}, max allowed: {max_responses_an_hour}")
+            #             if replies_sent >= max_responses_an_hour:
+            #                 break
                         
-                        # temporary: do not responsd in coversations where you've already sent 3 replies
-                        current_conversation = self.get_conversation(r.conversation_id)
-                        own_messages_count = sum(1 for msg in current_conversation if msg.author == self.character.twitter_username)
-                        if own_messages_count >= 3:
-                            log_message(self.logger, "info", self, f"Skipping conversation {r.conversation_id} as it already has {own_messages_count} replies from us.")
-                            continue
+            #             # temporary: do not responsd in coversations where you've already sent 3 replies
+            #             current_conversation = self.get_conversation(r.conversation_id)
+            #             own_messages_count = sum(1 for msg in current_conversation if msg.author == self.character.twitter_username)
+            #             if own_messages_count >= 3:
+            #                 log_message(self.logger, "info", self, f"Skipping conversation {r.conversation_id} as it already has {own_messages_count} replies from us.")
+            #                 continue
 
-                        print(f"Reply: {r}")
-                        if r.flagged:
-                            print(f"Skipping flagged reply: {r}")
-                            continue
-                        generated_response = self.sia.generate_response(r)
-                        if not generated_response:
-                            print(f"No response generated for reply: {r}")
-                            continue
-                        print(f"Generated response: {len(generated_response.content)} characters")
-                        tweet_id = self.sia.twitter.publish_post(post=generated_response, in_reply_to_tweet_id=r.id)
-                        self.memory.add_message(message_id=tweet_id, message=generated_response)
-                        replies_sent += 1
-                        if isinstance(tweet_id, Forbidden):
-                            print(f"\n\nFailed to send reply: {tweet_id}. Sleeping for 10 minutes.\n\n")
-                            time.sleep(600)
-                        time.sleep(random.randint(70, 90))
-                else:
-                    print("No new replies yet.")
-                print("\n\n")
+            #             print(f"Reply: {r}")
+            #             if r.flagged:
+            #                 print(f"Skipping flagged reply: {r}")
+            #                 continue
+            #             generated_response = self.sia.generate_response(r)
+            #             if not generated_response:
+            #                 print(f"No response generated for reply: {r}")
+            #                 continue
+            #             print(f"Generated response: {len(generated_response.content)} characters")
+            #             tweet_id = self.sia.twitter.publish_post(post=generated_response, in_reply_to_tweet_id=r.id)
+            #             self.memory.add_message(message_id=tweet_id, message=generated_response)
+            #             replies_sent += 1
+            #             if isinstance(tweet_id, Forbidden):
+            #                 print(f"\n\nFailed to send reply: {tweet_id}. Sleeping for 10 minutes.\n\n")
+            #                 time.sleep(600)
+            #             time.sleep(random.randint(70, 90))
+            #     else:
+            #         print("No new replies yet.")
+            #     print("\n\n")
 
 
             # searching for and replying
             #   to tweets from other users
-            
             self.engage()
 
 
