@@ -5,13 +5,14 @@ Revises: adfded2ef67e
 Create Date: 2024-11-30 18:02:36.345457
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'a9786fe6cbfc'
-down_revision: Union[str, None] = 'adfded2ef67e'
+revision: str = "a9786fe6cbfc"
+down_revision: Union[str, None] = "adfded2ef67e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

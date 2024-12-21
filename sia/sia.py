@@ -37,27 +37,28 @@ class Sia:
         plugins=[],
         knowledge_module_classes=[],
         logging_enabled=True,
-        testing=False
+        testing=False,
     ):
         self.testing = testing
-        self.character = SiaCharacter(
-            json_file=character_json_filepath, sia=self)
-        self.memory = SiaMemory(
-            character=self.character,
-            db_path=memory_db_path)
+        self.character = SiaCharacter(json_file=character_json_filepath, sia=self)
+        self.memory = SiaMemory(character=self.character, db_path=memory_db_path)
         self.clients = clients
-        self.twitter = SiaTwitterOfficial(
-            sia=self,
-            **twitter_creds,
-            testing=self.testing) if twitter_creds else None
-        self.telegram = SiaTelegram(
-            sia=self,
-            **telegram_creds,
-            chat_id=self.character.platform_settings.get(
-                "telegram",
-                {}).get(
-                "chat_id",
-                None)) if telegram_creds else None
+        self.twitter = (
+            SiaTwitterOfficial(sia=self, **twitter_creds, testing=self.testing)
+            if twitter_creds
+            else None
+        )
+        self.telegram = (
+            SiaTelegram(
+                sia=self,
+                **telegram_creds,
+                chat_id=self.character.platform_settings.get("telegram", {}).get(
+                    "chat_id", None
+                ),
+            )
+            if telegram_creds
+            else None
+        )
         self.twitter.character = self.character
         self.twitter.memory = self.memory
         self.plugins = plugins
@@ -66,8 +67,7 @@ class Sia:
         enable_logging(logging_enabled)
         self.character.logging_enabled = logging_enabled
 
-        self.knowledge_modules = [kmc(sia=self)
-                                  for kmc in knowledge_module_classes]
+        self.knowledge_modules = [kmc(sia=self) for kmc in knowledge_module_classes]
 
         self.run_all_modules()
 
@@ -92,15 +92,21 @@ class Sia:
         try:
             modules_settings = {}
             for module in self.knowledge_modules:
-                module_settings = session.query(KnowledgeModuleSettingsModel).filter(
-                    KnowledgeModuleSettingsModel.character_name_id == self.character.name_id,
-                    KnowledgeModuleSettingsModel.module_name == module.module_name).all()
+                module_settings = (
+                    session.query(KnowledgeModuleSettingsModel)
+                    .filter(
+                        KnowledgeModuleSettingsModel.character_name_id
+                        == self.character.name_id,
+                        KnowledgeModuleSettingsModel.module_name == module.module_name,
+                    )
+                    .all()
+                )
                 log_message(
-                    self.logger,
-                    "info",
-                    self,
-                    f"Module settings: {module_settings}")
-                modules_settings[module.module_name] = module_settings[0].module_settings
+                    self.logger, "info", self, f"Module settings: {module_settings}"
+                )
+                modules_settings[module.module_name] = module_settings[
+                    0
+                ].module_settings
             return modules_settings
         finally:
             session.close()
@@ -110,28 +116,32 @@ class Sia:
 
         for module in self.knowledge_modules:
             log_message(
-                self.logger, "info", self, f"Module: {
-                    module.module_name}")
+                self.logger,
+                "info",
+                self,
+                f"Module: {
+                    module.module_name}",
+            )
             for plugin_name, plugin in module.plugins.items():
+                log_message(self.logger, "info", self, f"Plugin: {plugin_name}")
                 log_message(
                     self.logger,
                     "info",
                     self,
-                    f"Plugin: {plugin_name}")
-                log_message(self.logger,
-                            "info",
-                            self,
-                            f"Usage condition: {modules_settings[module.module_name].get('plugins',
+                    f"Usage condition: {modules_settings[module.module_name].get('plugins',
                                                                                          {}).get(plugin_name,
                                                                                                  {}).get('usage_condition',
-                                                                                                         {}).get('time_of_day')}")
-                log_message(
-                    self.logger,
-                    "info",
-                    self,
-                    f"Time of day: {time_of_day}")
-                if modules_settings[module.module_name].get('plugins', {}).get(
-                        plugin_name, {}).get('usage_condition', {}).get('time_of_day') == time_of_day:
+                                                                                                         {}).get('time_of_day')}",
+                )
+                log_message(self.logger, "info", self, f"Time of day: {time_of_day}")
+                if (
+                    modules_settings[module.module_name]
+                    .get("plugins", {})
+                    .get(plugin_name, {})
+                    .get("usage_condition", {})
+                    .get("time_of_day")
+                    == time_of_day
+                ):
                     return plugin
 
         # for module in self.knowledge_modules:
@@ -142,33 +152,24 @@ class Sia:
         return None
 
     def generate_post(
-            self,
-            platform="twitter",
-            author=None,
-            character=None,
-            time_of_day=None):
+        self, platform="twitter", author=None, character=None, time_of_day=None
+    ):
 
-        plugin = self.get_plugin(
-            time_of_day=self.character.current_time_of_day())
+        plugin = self.get_plugin(time_of_day=self.character.current_time_of_day())
         plugin_prompt = ""
         if plugin:
             plugin_prompt = plugin.get_instructions_and_knowledge()
-            log_message(
-                self.logger,
-                "info",
-                self,
-                f"Plugin prompt: {plugin_prompt}")
+            log_message(self.logger, "info", self, f"Plugin prompt: {plugin_prompt}")
         else:
             log_message(self.logger, "info", self, f"No plugin found")
 
-        log_message(
-            self.logger,
-            "info",
-            self,
-            f"Plugin prompt: {plugin_prompt}")
+        log_message(self.logger, "info", self, f"Plugin prompt: {plugin_prompt}")
 
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", """
+        prompt_template = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """
                 {you_are}
 
                 Your post examples are:
@@ -182,8 +183,11 @@ class Sia:
                 You are posting to: {platform}
 
                 {plugin_prompt}
-            """),
-            ("user", """
+            """,
+                ),
+                (
+                    "user",
+                    """
                 Generate your new post.
 
                 Critically important: your new post must be different from the examples provided and from your previous posts in all ways, shapes or forms.
@@ -196,26 +200,33 @@ class Sia:
                 Your post must be between {length_range} words long.
 
                 You must not use hashtags in your post.
-            """)
-        ])
+            """,
+                ),
+            ]
+        )
 
         if not time_of_day:
             time_of_day = self.character.current_time_of_day()
 
         ai_input = {
             "you_are": self.character.prompts.get("you_are"),
-            "post_examples": self.character.get_post_examples("general", time_of_day=time_of_day, random_pick=7),
-            "previous_posts": [f"[{post.wen_posted}] {post.content}" for post in self.memory.get_messages()[-10:]],
+            "post_examples": self.character.get_post_examples(
+                "general", time_of_day=time_of_day, random_pick=7
+            ),
+            "previous_posts": [
+                f"[{post.wen_posted}] {post.content}"
+                for post in self.memory.get_messages()[-10:]
+            ],
             "platform": platform,
-            "length_range": random.choice(self.character.post_parameters.get("length_ranges")),
+            "length_range": random.choice(
+                self.character.post_parameters.get("length_ranges")
+            ),
             "plugin_prompt": plugin_prompt,
             # "formatting": self.character.post_parameters.get("formatting")
         }
 
         try:
-            llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20240620",
-                temperature=0.3)
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.3)
 
             ai_chain = prompt_template | llm
 
@@ -225,7 +236,8 @@ class Sia:
                 self.logger,
                 "info",
                 self,
-                f"Generated post with Anthropic: {generated_post}")
+                f"Generated post with Anthropic: {generated_post}",
+            )
 
         except Exception:
 
@@ -240,23 +252,21 @@ class Sia:
                     self.logger,
                     "info",
                     self,
-                    f"Generated post with OpenAI: {generated_post}")
+                    f"Generated post with OpenAI: {generated_post}",
+                )
 
             except Exception as e:
 
                 generated_post = None
 
-                log_message(
-                    self.logger,
-                    "error",
-                    self,
-                    f"Error generating post: {e}")
+                log_message(self.logger, "error", self, f"Error generating post: {e}")
 
         image_filepaths = []
 
         # Generate an image for the post
-        if random.random() < self.character.plugins_settings.get(
-                "dalle", {}).get("probability_of_posting", 0):
+        if random.random() < self.character.plugins_settings.get("dalle", {}).get(
+            "probability_of_posting", 0
+        ):
             image_url = generate_image_dalle(generated_post.content[0:900])
             if image_url:
                 image_filepath = f"media/{uuid4()}.png"
@@ -265,11 +275,14 @@ class Sia:
 
         # Generate a meme for the post
         imgflip_meme_generator = ImgflipMemeGenerator(
-            os.getenv("IMGFLIP_USERNAME"), os.getenv("IMGFLIP_PASSWORD"))
-        if random.random() < self.character.plugins_settings.get(
-                "imgflip", {}).get("probability_of_posting", 0):
+            os.getenv("IMGFLIP_USERNAME"), os.getenv("IMGFLIP_PASSWORD")
+        )
+        if random.random() < self.character.plugins_settings.get("imgflip", {}).get(
+            "probability_of_posting", 0
+        ):
             image_url = imgflip_meme_generator.generate_ai_meme(
-                prefix_text=generated_post.content)
+                prefix_text=generated_post.content
+            )
             if image_url:
                 os.makedirs("media/imgflip_memes", exist_ok=True)
                 image_filepath = f"media/imgflip_memes/{uuid4()}.png"
@@ -281,7 +294,7 @@ class Sia:
             content=post_content,
             platform=platform,
             author=self.character.twitter_username,
-            character=self.character.name
+            character=self.character.name,
         )
 
         if plugin:
@@ -290,12 +303,12 @@ class Sia:
                 "info",
                 self,
                 f"Updating settings for {
-                    plugin.plugin_name}")
+                    plugin.plugin_name}",
+            )
             plugin.update_settings(
-                next_use_after=datetime.datetime.now(
-                    timezone.utc) +
-                datetime.timedelta(
-                    hours=1))
+                next_use_after=datetime.datetime.now(timezone.utc)
+                + datetime.timedelta(hours=1)
+            )
         else:
             log_message(self.logger, "info", self, f"No plugin found")
 
@@ -308,7 +321,7 @@ class Sia:
         time_of_day=None,
         conversation=None,
         previous_messages: str = None,
-        use_filtering_rules: str = True
+        use_filtering_rules: str = True,
     ) -> SiaMessageGeneratedSchema | None:
         """
         Generate a response to a message.
@@ -324,43 +337,51 @@ class Sia:
 
         if not conversation:
             conversation = self.twitter.get_conversation(
-                conversation_id=message.conversation_id)
+                conversation_id=message.conversation_id
+            )
             conversation_first_message = self.memory.get_messages(
-                id=message.conversation_id, platform=platform)
+                id=message.conversation_id, platform=platform
+            )
             conversation = conversation_first_message + conversation[-20:]
             conversation_str = "\n".join(
-                [f"[{msg.wen_posted}] {msg.author}: {msg.content}" for msg in conversation])
-            log_message(
-                self.logger,
-                "info",
-                self,
-                f"Conversation: {conversation_str}")
+                [
+                    f"[{msg.wen_posted}] {msg.author}: {msg.content}"
+                    for msg in conversation
+                ]
+            )
+            log_message(self.logger, "info", self, f"Conversation: {conversation_str}")
         else:
             pass
 
-        message_to_respond_str = f"[{message.wen_posted}] {message.author}: {message.content}"
+        message_to_respond_str = (
+            f"[{message.wen_posted}] {message.author}: {message.content}"
+        )
         log_message(
-            self.logger,
-            "info",
-            self,
-            f"Message to respond: {message_to_respond_str}")
+            self.logger, "info", self, f"Message to respond: {message_to_respond_str}"
+        )
 
         # do not answer if the message does not pass the filtering rules but if
         # we need to filter the response
-        if self.character.responding.get(
-                "filtering_rules") and use_filtering_rules:
+        if self.character.responding.get("filtering_rules") and use_filtering_rules:
             log_message(
                 self.logger,
                 "info",
                 self,
                 f"Checking the response against filtering rules: {
-                    self.character.responding.get('filtering_rules')}")
+                    self.character.responding.get('filtering_rules')}",
+            )
             llm_filtering = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
-            llm_filtering_prompt_template = ChatPromptTemplate.from_messages([
-                ("system", """
+            llm_filtering_prompt_template = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        """
                     You are a message filtering AI. You are given a message and a list of filtering rules. You need to determine if the message passes the filtering rules. If it does, return 'True'. If it does not, return 'False' Only respond with 1 word: 'True' or 'False'.
-                """),
-                ("user", """
+                """,
+                    ),
+                    (
+                        "user",
+                        """
                     Conversation:
                     {conversation}
 
@@ -373,10 +394,13 @@ class Sia:
                     Avoid making assumptions about the message author's intentions. Only apply the filtering rules if the message is in direct conflict with them.
 
                     Return True unless the message is in direct conflict with the filtering rules.
-                """)
-            ])
+                """,
+                    ),
+                ]
+            )
             llm_filtering_structured = llm_filtering.with_structured_output(
-                ResponseFilteringResultLLMSchema)
+                ResponseFilteringResultLLMSchema
+            )
 
             filtering_chain = llm_filtering_prompt_template | llm_filtering_structured
 
@@ -385,35 +409,39 @@ class Sia:
                     {
                         "conversation": conversation_str,
                         "message": message_to_respond_str,
-                        "filtering_rules": self.character.responding.get("filtering_rules")})
+                        "filtering_rules": self.character.responding.get(
+                            "filtering_rules"
+                        ),
+                    }
+                )
                 log_message(
                     self.logger,
                     "info",
                     self,
-                    f"Response filtering result: {filtering_result}")
+                    f"Response filtering result: {filtering_result}",
+                )
 
             except Exception as e:
                 log_message(
-                    self.logger,
-                    "error",
-                    self,
-                    f"Error getting filtering result: {e}")
+                    self.logger, "error", self, f"Error getting filtering result: {e}"
+                )
                 return None
 
             if not filtering_result.should_respond:
                 return None
 
         else:
-            log_message(
-                self.logger,
-                "info",
-                self,
-                f"No filtering rules found.")
+            log_message(self.logger, "info", self, f"No filtering rules found.")
 
-        time_of_day = time_of_day if time_of_day else self.character.current_time_of_day()
+        time_of_day = (
+            time_of_day if time_of_day else self.character.current_time_of_day()
+        )
 
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", """
+        prompt_template = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """
                 {you_are}
 
                 {communication_requirements}
@@ -431,9 +459,9 @@ class Sia:
                 Your response must be unique and creative.  It must also be drastically different from your previous messages.
 
                 It must still be consistent with your personality, mood, core objective and means for achieving it.
-                """ +
-
-                ("""
+                """
+                    + (
+                        """
                 Some of your previous messages:
                 ------------
                 {previous_messages}
@@ -446,9 +474,14 @@ class Sia:
                 - if one of your previous messages continues with an assessment of the situation, your new response must not continue with an assessment of the situation.
                 - if one of your previous messages ends with a question, your new response must not end with a question.
                 - if your previous message is short, your new response must be way longer and vice versa.
-                """ if previous_messages else "")
-             ),
-            ("user", """
+                """
+                        if previous_messages
+                        else ""
+                    ),
+                ),
+                (
+                    "user",
+                    """
                 Generate your response to the message.
 
                 Your response length must be fewer than 30 words.
@@ -462,16 +495,21 @@ class Sia:
                 Your response must be natural continuation of the conversation or the message you are responding to. It must add some value to the conversation.
 
                 Generate your response to the message following the rules and instructions provided above.
-            """)
-        ])
+            """,
+                ),
+            ]
+        )
 
         ai_input = {
             "you_are": self.character.prompts.get("you_are"),
-            "communication_requirements": self.character.prompts.get("communication_requirements"),
+            "communication_requirements": self.character.prompts.get(
+                "communication_requirements"
+            ),
             "platform": platform,
             "message": message_to_respond_str,
             "conversation": conversation_str,
-            "previous_messages": previous_messages}
+            "previous_messages": previous_messages,
+        }
 
         log_message(
             self.logger,
@@ -480,12 +518,11 @@ class Sia:
             f"ai_input: {
                 json.dumps(
                     ai_input,
-                    indent=4)}")
+                    indent=4)}",
+        )
 
         try:
-            llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20240620",
-                temperature=0.0)
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.0)
 
             ai_chain = prompt_template | llm
 
@@ -502,36 +539,32 @@ class Sia:
 
             except Exception as e:
                 log_message(
-                    self.logger,
-                    "error",
-                    self,
-                    f"Error generating response: {e}")
+                    self.logger, "error", self, f"Error generating response: {e}"
+                )
                 return None
 
         generated_response_schema = SiaMessageGeneratedSchema(
             content=generated_response.content,
             platform=message.platform,
-            author=self.character.platform_settings.get(
-                message.platform,
-                {}).get(
-                "username",
-                self.character.name),
+            author=self.character.platform_settings.get(message.platform, {}).get(
+                "username", self.character.name
+            ),
             character=self.character.name,
             response_to=message.id,
-            conversation_id=message.conversation_id)
+            conversation_id=message.conversation_id,
+        )
         log_message(
             self.logger,
             "info",
             self,
-            f"Generated response: {generated_response_schema}")
+            f"Generated response: {generated_response_schema}",
+        )
 
         return generated_response_schema
 
     def publish_post(
-            self,
-            client: SiaClient,
-            post: SiaMessageGeneratedSchema,
-            media: dict = []) -> str:
+        self, client: SiaClient, post: SiaMessageGeneratedSchema, media: dict = []
+    ) -> str:
         tweet_id = client.publish_post(post, media)
         return tweet_id
 

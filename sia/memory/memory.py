@@ -8,8 +8,11 @@ from sia.character import SiaCharacter
 from utils.logging_utils import enable_logging, log_message, setup_logging
 
 from .models_db import Base, SiaCharacterSettingsModel, SiaMessageModel
-from .schemas import (SiaCharacterSettingsSchema, SiaMessageGeneratedSchema,
-                      SiaMessageSchema)
+from .schemas import (
+    SiaCharacterSettingsSchema,
+    SiaMessageGeneratedSchema,
+    SiaMessageSchema,
+)
 
 
 class SiaMemory:
@@ -26,10 +29,11 @@ class SiaMemory:
         enable_logging(self.logging_enabled)
 
     def add_message(
-            self,
-            message_id: str,
-            message: SiaMessageGeneratedSchema,
-            original_data: dict = None) -> SiaMessageSchema:
+        self,
+        message_id: str,
+        message: SiaMessageGeneratedSchema,
+        original_data: dict = None,
+    ) -> SiaMessageSchema:
         session = self.Session()
 
         message_model = SiaMessageModel(
@@ -42,7 +46,7 @@ class SiaMemory:
             response_to=message.response_to,
             flagged=message.flagged,
             message_metadata=message.message_metadata,
-            original_data=original_data
+            original_data=original_data,
         )
 
         try:
@@ -59,16 +63,15 @@ class SiaMemory:
 
         except Exception as e:
             log_message(
-                self.logger,
-                "error",
-                self,
-                f"Error adding message to database: {e}")
+                self.logger, "error", self, f"Error adding message to database: {e}"
+            )
             log_message(
                 self.logger,
                 "error",
                 self,
                 f"message type: {
-                    type(message)}")
+                    type(message)}",
+            )
             session.rollback()
             raise e
 
@@ -76,19 +79,20 @@ class SiaMemory:
             session.close()
 
     def get_messages(
-            self,
-            id=None,
-            platform: str = None,
-            author: str = None,
-            not_author: str = None,
-            character: str = None,
-            conversation_id: str = None,
-            flagged: int = 0,
-            sort_by: str = None,
-            sort_order: str = "asc",
-            is_post: bool = None,
-            from_datetime=None,
-            exclude_own_conversations: bool = False):
+        self,
+        id=None,
+        platform: str = None,
+        author: str = None,
+        not_author: str = None,
+        character: str = None,
+        conversation_id: str = None,
+        flagged: int = 0,
+        sort_by: str = None,
+        sort_order: str = "asc",
+        is_post: bool = None,
+        from_datetime=None,
+        exclude_own_conversations: bool = False,
+    ):
         session = self.Session()
         query = session.query(SiaMessageModel)
         if id:
@@ -109,23 +113,31 @@ class SiaMemory:
         # Exclude messages from conversations that we initiated
         if exclude_own_conversations:
             # Create an explicit select statement
-            our_initiated_conversations = select(
-                SiaMessageModel.conversation_id).where(
-                and_(
-                    SiaMessageModel.author == self.character.twitter_username,
-                    SiaMessageModel.id == SiaMessageModel.conversation_id)).distinct()
+            our_initiated_conversations = (
+                select(SiaMessageModel.conversation_id)
+                .where(
+                    and_(
+                        SiaMessageModel.author == self.character.twitter_username,
+                        SiaMessageModel.id == SiaMessageModel.conversation_id,
+                    )
+                )
+                .distinct()
+            )
 
             # Then exclude messages from these conversations
             query = query.filter(
-                ~SiaMessageModel.conversation_id.in_(our_initiated_conversations))
+                ~SiaMessageModel.conversation_id.in_(our_initiated_conversations)
+            )
 
         # if is_post is not None:
         if is_post:
             # For posts: id matches conversation_id or conversation_id is None
-            query = query.filter(or_(
-                SiaMessageModel.id == SiaMessageModel.conversation_id,
-                SiaMessageModel.conversation_id is None
-            ))
+            query = query.filter(
+                or_(
+                    SiaMessageModel.id == SiaMessageModel.conversation_id,
+                    SiaMessageModel.conversation_id is None,
+                )
+            )
 
         if flagged != 2:
             query = query.filter_by(flagged=bool(flagged))
@@ -141,15 +153,18 @@ class SiaMemory:
 
     def get_conversation_ids(self):
         session = self.Session()
-        conversation_ids = session.query(SiaMessageModel.conversation_id).filter(
-            SiaMessageModel.id != SiaMessageModel.conversation_id).distinct().all()
+        conversation_ids = (
+            session.query(SiaMessageModel.conversation_id)
+            .filter(SiaMessageModel.id != SiaMessageModel.conversation_id)
+            .distinct()
+            .all()
+        )
         session.close()
         return [conversation_id[0] for conversation_id in conversation_ids]
 
     def clear_messages(self):
         session = self.Session()
-        session.query(SiaMessageModel).filter_by(
-            character=self.character.name).delete()
+        session.query(SiaMessageModel).filter_by(character=self.character.name).delete()
         session.commit()
         session.close()
 
@@ -159,18 +174,22 @@ class SiaMemory:
 
     @classmethod
     def printable_message(
-            self,
-            message_id,
-            author_username,
-            created_at,
-            text,
-            wrap_width=70,
-            indent_width=5):
+        self,
+        message_id,
+        author_username,
+        created_at,
+        text,
+        wrap_width=70,
+        indent_width=5,
+    ):
         output_str = ""
         output_str += f"{author_username} [{created_at}] (message id: {message_id}):\n"
         wrapped_comment = textwrap.fill(text.strip(), width=wrap_width)
-        output_str += ' ' * indent_width + \
-            wrapped_comment.replace('\n', '\n' + ' ' * indent_width) + "\n"
+        output_str += (
+            " " * indent_width
+            + wrapped_comment.replace("\n", "\n" + " " * indent_width)
+            + "\n"
+        )
 
         return output_str
 
@@ -184,7 +203,8 @@ class SiaMemory:
                 message_id=message_id,
                 author_username=message.author,
                 created_at=message.wen_posted,
-                text=message.content)
+                text=message.content,
+            )
 
             output_str += f"\n\n{'=' * 10}\n\n"
 
@@ -193,12 +213,14 @@ class SiaMemory:
     def get_character_settings(self):
         session = self.Session()
         try:
-            character_settings = session.query(SiaCharacterSettingsModel).filter_by(
-                character_name_id=self.character.name_id).first()
+            character_settings = (
+                session.query(SiaCharacterSettingsModel)
+                .filter_by(character_name_id=self.character.name_id)
+                .first()
+            )
             if not character_settings:
                 character_settings = SiaCharacterSettingsModel(
-                    character_name_id=self.character.name_id,
-                    character_settings={}
+                    character_name_id=self.character.name_id, character_settings={}
                 )
                 session.add(character_settings)
                 session.commit()
@@ -206,18 +228,19 @@ class SiaMemory:
             # Convert the SQLAlchemy model to a Pydantic schema before closing
             # the session
             character_settings_schema = SiaCharacterSettingsSchema.from_orm(
-                character_settings)
+                character_settings
+            )
             return character_settings_schema
 
         finally:
             session.close()
 
-    def update_character_settings(
-            self, character_settings: SiaCharacterSettingsSchema):
+    def update_character_settings(self, character_settings: SiaCharacterSettingsSchema):
         session = self.Session()
         # Convert the Pydantic schema to a dictionary
         character_settings_dict = character_settings.dict(exclude_unset=True)
         session.query(SiaCharacterSettingsModel).filter_by(
-            character_name_id=self.character.name_id).update(character_settings_dict)
+            character_name_id=self.character.name_id
+        ).update(character_settings_dict)
         session.commit()
         session.close()

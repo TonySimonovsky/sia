@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 class KnowledgeModuleSettingsModel(Base):
-    __tablename__ = 'knowledge_module_settings'
+    __tablename__ = "knowledge_module_settings"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid4()))
     character_name_id = Column(String)

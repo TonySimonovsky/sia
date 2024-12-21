@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 class SiaMessageModel(Base):
-    __tablename__ = 'message'
+    __tablename__ = "message"
 
     id = Column(String, primary_key=True)
     conversation_id = Column(String)
@@ -24,7 +24,7 @@ class SiaMessageModel(Base):
 
 
 class SiaCharacterSettingsModel(Base):
-    __tablename__ = 'character_settings'
+    __tablename__ = "character_settings"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid4()))
     character_name_id = Column(String)

@@ -23,7 +23,7 @@ async def main():
             "api_secret_key": os.getenv("TW_API_KEY_SECRET"),
             "access_token": os.getenv("TW_ACCESS_TOKEN"),
             "access_token_secret": os.getenv("TW_ACCESS_TOKEN_SECRET"),
-            "bearer_token": os.getenv("TW_BEARER_TOKEN")
+            "bearer_token": os.getenv("TW_BEARER_TOKEN"),
         }
     if os.getenv("TG_BOT_TOKEN"):
         client_creds["telegram_creds"] = {
@@ -35,11 +35,11 @@ async def main():
         **client_creds,
         memory_db_path=os.getenv("DB_PATH"),
         # knowledge_module_classes=[GoogleNewsModule],
-        logging_enabled=logging_enabled
+        logging_enabled=logging_enabled,
     )
 
     await sia.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

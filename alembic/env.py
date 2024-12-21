@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+
 # Import your models here
 from sia.memory.models_db import Base  # Adjust the import path as necessary
 
@@ -23,10 +24,10 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Get the database URL from the environment variable
-database_url = os.getenv('DB_PATH')
+database_url = os.getenv("DB_PATH")
 print(f"Database URL: {database_url}")
 if database_url:
-    config.set_main_option('sqlalchemy.url', database_url)
+    config.set_main_option("sqlalchemy.url", database_url)
 
 
 # other values from the config, defined by the needs of env.py,
@@ -73,9 +74,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

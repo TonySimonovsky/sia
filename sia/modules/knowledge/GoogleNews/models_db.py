@@ -6,7 +6,7 @@ Base = declarative_base()
 
 
 class GoogleNewsSearchModel(Base):
-    __tablename__ = 'knowledge_google_news_search'
+    __tablename__ = "knowledge_google_news_search"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     metadata_id = Column(String, unique=True, nullable=False)
@@ -32,13 +32,11 @@ class GoogleNewsSearchModel(Base):
     detected_location = Column(String)
 
     # Relationship to organic results
-    results = relationship(
-        "GoogleNewsSearchResultModel",
-        back_populates="search")
+    results = relationship("GoogleNewsSearchResultModel", back_populates="search")
 
 
 class GoogleNewsSearchResultModel(Base):
-    __tablename__ = 'knowledge_google_news_search_result'
+    __tablename__ = "knowledge_google_news_search_result"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     position = Column(Integer)
@@ -49,7 +47,7 @@ class GoogleNewsSearchResultModel(Base):
     snippet = Column(String)
     favicon = Column(String, nullable=True)
     thumbnail = Column(String, nullable=True)
-    search_id = Column(Integer, ForeignKey('knowledge_google_news_search.id'))
+    search_id = Column(Integer, ForeignKey("knowledge_google_news_search.id"))
 
     # Relationship back to search schema
     search = relationship("GoogleNewsSearchModel", back_populates="results")

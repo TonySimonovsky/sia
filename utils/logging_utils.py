@@ -9,10 +9,11 @@ logging_enabled = True
 
 
 def setup_logging(
-        logger_name='step_by_step',
-        logs_folder="logs/",
-        log_filename="step_by_step.log",
-        level=logging.INFO):
+    logger_name="step_by_step",
+    logs_folder="logs/",
+    log_filename="step_by_step.log",
+    level=logging.INFO,
+):
     """Set up logging configuration."""
     if not os.path.exists(logs_folder):
         os.makedirs(logs_folder)
@@ -32,16 +33,17 @@ def setup_logging(
 
     # Create a file handler
     file_handler = logging.FileHandler(log_path)
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
     logger.addHandler(file_handler)
 
-    disable_all_loggers_except(['step_by_step', 'speed', 'testing'])
+    disable_all_loggers_except(["step_by_step", "speed", "testing"])
 
     return logger
 
 
-def disable_all_loggers_except(logger_names=['step_by_step']):
+def disable_all_loggers_except(logger_names=["step_by_step"]):
     if isinstance(logger_names, str):
         logger_names = [logger_names]
     for name, logger in logging.root.manager.loggerDict.items():
@@ -62,9 +64,15 @@ def log_message(logger, level, class_instance, message, user_id=None):
         # Get only the base filename, not the full path
         file_name = os.path.basename(frame_info.filename)
         line_number = frame_info.lineno
-        class_name = class_instance if isinstance(
-            class_instance, str) else class_instance.__class__.__name__ if hasattr(
-            class_instance, '__class__') else class_instance.__name__
+        class_name = (
+            class_instance
+            if isinstance(class_instance, str)
+            else (
+                class_instance.__class__.__name__
+                if hasattr(class_instance, "__class__")
+                else class_instance.__name__
+            )
+        )
         # print(f"class_name: {class_name}\n")
 
         func_name = current_frame.f_back.f_code.co_name
@@ -77,8 +85,8 @@ def log_message(logger, level, class_instance, message, user_id=None):
         # print(f"current_frame.f_back.f_code.co_name: {current_frame.f_back.f_code.co_name}\n")
 
         # Check if the logging level is valid
-        if level not in ['debug', 'info', 'warning', 'error', 'critical']:
-            level = 'info'
+        if level not in ["debug", "info", "warning", "error", "critical"]:
+            level = "info"
 
         log_func = getattr(logger, level)
 
@@ -88,7 +96,7 @@ def log_message(logger, level, class_instance, message, user_id=None):
 
         # Add user ID to the log message if it's provided
         if user_id is not None:
-            log_message += f' - user {user_id}'
+            log_message += f" - user {user_id}"
 
         log_func(log_message)
 
@@ -97,6 +105,7 @@ def enable_logging(enable=True):
     """Enable or disable logging."""
     global logging_enabled
     logging_enabled = enable
+
 
 # Function to log time and update averages
 
@@ -133,10 +142,17 @@ def log_execution(logger, logger_speed):
                 logger,
                 "info",
                 cls_and_func_str,
-                f"END ({exec_id}, spent {func_time_spent_str})")
-            log_message(logger_speed, "info", cls_and_func_str,
-                        f"({exec_id}, spent {func_time_spent_str})")
+                f"END ({exec_id}, spent {func_time_spent_str})",
+            )
+            log_message(
+                logger_speed,
+                "info",
+                cls_and_func_str,
+                f"({exec_id}, spent {func_time_spent_str})",
+            )
 
             return result
+
         return wrapper
+
     return decorator

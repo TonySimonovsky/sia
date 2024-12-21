@@ -1,4 +1,3 @@
-
 from twitter.account import Account
 
 from sia.clients.client import SiaClient
