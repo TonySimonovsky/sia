@@ -154,7 +154,7 @@
             "probability_of_posting": 0
         },
         "dalle": {
-            "probability_of_posting": 1
+            "probability_of_posting": 0
         }
     },
     "platform_settings": {
@@ -182,9 +182,12 @@
         },
         "telegram": {
             "enabled": true,
-            "post_frequency": 2,
-            "chat_id": "-1002312730638",
-            "username": "realsia_bot"
+            "username": "realsia_bot",
+            "post": {
+                "enabled": true,
+                "post_frequency": 2,
+                "chat_id": "-1002312730638"
+            }
         }
     },
     "knowledge_modules": {
