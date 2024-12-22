@@ -565,11 +565,11 @@ class Sia:
 
         return generated_response_schema
 
-    def publish_post(
-        self, client: SiaClientInterface, post: SiaMessageGeneratedSchema, media: dict = []
-    ) -> str:
-        tweet_id = client.publish_post(post, media)
-        return tweet_id
+    # def publish_post(
+    #     self, client: SiaClientInterface, post: SiaMessageGeneratedSchema, media: dict = []
+    # ) -> str:
+    #     tweet_id = client.publish_post(post, media)
+    #     return tweet_id
 
 
     def run_telegram(self):
