@@ -296,7 +296,7 @@ class Sia:
             content=post_content,
             platform=platform,
             author=author,
-            character=character,
+            # character=character,
             conversation_id=conversation_id
         )
 
@@ -514,15 +514,15 @@ class Sia:
             "previous_messages": previous_messages,
         }
 
-        log_message(
-            self.logger,
-            "info",
-            self,
-            f"ai_input: {
-                json.dumps(
-                    ai_input,
-                    indent=4)}",
-        )
+        # log_message(
+        #     self.logger,
+        #     "info",
+        #     self,
+        #     f"ai_input: {
+        #         json.dumps(
+        #             ai_input,
+        #             indent=4)}",
+        # )
 
         try:
             llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.0)
@@ -552,7 +552,7 @@ class Sia:
             author=self.character.platform_settings.get(message.platform, {}).get(
                 "username", self.character.name
             ),
-            character=self.character.name,
+            # character=self.character.name,
             response_to=message.id,
             conversation_id=message.conversation_id,
         )
@@ -594,19 +594,56 @@ class Sia:
             finally:
                 loop.close()
 
-    async def run(self):
-        """Run all clients concurrently using asyncio"""
-        tasks = []
+
+    def run(self):
+        """Run all clients concurrently using threads"""
+        threads = []
         
-        # Add Telegram task if enabled
+        # Add Telegram thread if enabled
         if self.telegram:
-            tasks.append(self.telegram.run())
+            def run_telegram():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self.telegram.run())
+                except Exception as e:
+                    print(f"Telegram error: {e}")
+                finally:
+                    loop.close()
+                    
+            telegram_thread = threading.Thread(
+                target=run_telegram,
+                name="telegram_thread"
+            )
+            threads.append(telegram_thread)
             
-        # Add Twitter task if enabled
+        # Add Twitter thread if enabled    
         if self.twitter:
-            tasks.append(self.twitter.run())
+            def run_twitter():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self.twitter.run())
+                except Exception as e:
+                    print(f"Twitter error: {e}")
+                finally:
+                    loop.close()
+                    
+            twitter_thread = threading.Thread(
+                target=run_twitter,
+                name="twitter_thread"
+            )
+            threads.append(twitter_thread)
             
-        # Run all tasks concurrently
-        if tasks:
-            await asyncio.gather(*tasks)
+        # Start all threads
+        for thread in threads:
+            thread.daemon = True
+            thread.start()
+            
+        try:
+            # Keep main thread alive
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Shutting down...")
     

@@ -61,7 +61,7 @@ async def main():
     post = SiaMessageGeneratedSchema(
         platform="twitter",
         author=sia.character.twitter_username,
-        character=character_name,
+        # character=character_name,
         content=post_text,
     )
 
@@ -70,7 +70,12 @@ async def main():
     tweet_id = sia.twitter.publish_post(post, media)
 
     if tweet_id and tweet_id is not Forbidden:
-        sia.memory.add_message(message_id=tweet_id, message=post, message_type="post")
+        sia.memory.add_message(
+            message_id=tweet_id, 
+            message=post, 
+            message_type="post", 
+            character=character_name
+        )
 
 
 # Start the asyncio event loop

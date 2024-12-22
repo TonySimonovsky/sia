@@ -11,7 +11,6 @@ class SiaMessageGeneratedSchema(BaseModel):
     content: str
     platform: str
     author: str
-    character: Optional[str] = None
     response_to: Optional[str] = None
     flagged: Optional[bool] = Field(default=False)
     message_metadata: Optional[dict] = None
@@ -26,6 +25,32 @@ class SiaMessageSchema(SiaMessageGeneratedSchema):
     message_type: Optional[str] = Field(default="post")  # Can be "post" or "reply"
     wen_posted: datetime = Field(default_factory=lambda: datetime.now())
     original_data: Optional[dict] = None
+    
+    characters: list['MessageCharacterSchema'] = Field(default_factory=list)
+
+    @classmethod
+    def from_orm(cls, obj):
+        # Get all column values
+        values = {
+            c.name: getattr(obj, c.name)
+            for c in obj.__table__.columns
+        }
+        
+        # Handle characters relationship explicitly
+        try:
+            if hasattr(obj, 'characters'):
+                values['characters'] = [
+                    MessageCharacterSchema(
+                        message_id=char.message_id,
+                        character_name=char.character_name,
+                        created_at=char.created_at
+                    )
+                    for char in (obj.characters or [])
+                ]
+        except Exception:
+            values['characters'] = []
+            
+        return cls(**values)
 
     def printable(self):
         output_str = ""
@@ -45,6 +70,15 @@ class SiaMessageSchema(SiaMessageGeneratedSchema):
 
     class Config:
         # orm_mode = True
+        from_attributes = True
+
+
+class MessageCharacterSchema(BaseModel):
+    message_id: str
+    character_name: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
+
+    class Config:
         from_attributes = True
 
 

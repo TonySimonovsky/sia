@@ -3,11 +3,12 @@ import textwrap
 
 from sqlalchemy import and_, asc, create_engine, desc, or_, select
 from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
 
 from sia.character import SiaCharacter
 from utils.logging_utils import enable_logging, log_message, setup_logging
 
-from .models_db import Base, SiaCharacterSettingsModel, SiaMessageModel
+from .models_db import Base, SiaCharacterSettingsModel, SiaMessageModel, MessageCharacterModel
 from .schemas import (
     SiaCharacterSettingsSchema,
     SiaMessageGeneratedSchema,
@@ -28,58 +29,19 @@ class SiaMemory:
         self.logger = setup_logging()
         enable_logging(self.logging_enabled)
 
-    def add_message(
-        self,
-        message_id: str,
-        message: SiaMessageGeneratedSchema,
-        message_type: str = None,
-        original_data: dict = None,
-    ) -> SiaMessageSchema:
+    @contextmanager
+    def session_scope(self):
+        """Provide a transactional scope around a series of operations."""
         session = self.Session()
-
-        message_model = SiaMessageModel(
-            id=str(message_id),
-            platform=message.platform,
-            character=message.character,
-            author=message.author,
-            content=message.content,
-            conversation_id=message.conversation_id or message_id,
-            response_to=message.response_to,
-            flagged=message.flagged,
-            message_metadata=message.message_metadata,
-            original_data=original_data,
-            message_type=message_type
-        )
-
         try:
-            # Serialize original_data if it's a dictionary
-            if isinstance(original_data, dict):
-                original_data = json.dumps(original_data)
-
-            session.add(message_model)
+            yield session
             session.commit()
-
-            # Convert the model to a schema
-            message_schema = SiaMessageSchema.from_orm(message_model)
-            return message_schema
-
         except Exception as e:
-            log_message(
-                self.logger, "error", self, f"Error adding message to database: {e}"
-            )
-            log_message(
-                self.logger,
-                "error",
-                self,
-                f"message type: {
-                    type(message)}",
-            )
             session.rollback()
             raise e
-
         finally:
             session.close()
-
+            
     def get_messages(
         self,
         id=None,
@@ -95,58 +57,84 @@ class SiaMemory:
         from_datetime=None,
         exclude_own_conversations: bool = False,
     ):
-        session = self.Session()
-        query = session.query(SiaMessageModel)
-        if id:
-            query = query.filter_by(id=id)
-        if character:
-            query = query.filter_by(character=character)
-        if platform:
-            query = query.filter_by(platform=platform)
-        if author:
-            query = query.filter_by(author=author)
-        if not_author:
-            query = query.filter(SiaMessageModel.author != not_author)
-        if conversation_id:
-            query = query.filter_by(conversation_id=conversation_id)
-        if from_datetime:
-            query = query.filter(SiaMessageModel.wen_posted >= from_datetime)
-
-        # Exclude messages from conversations that we initiated
-        if exclude_own_conversations:
-            # Create an explicit select statement
-            our_initiated_conversations = (
-                select(SiaMessageModel.conversation_id)
-                .where(
-                    and_(
-                        SiaMessageModel.author == self.character.twitter_username,
-                        SiaMessageModel.id == SiaMessageModel.conversation_id,
-                    )
+        with self.session_scope() as session:
+            # Start with a query that eagerly loads characters
+            query = session.query(SiaMessageModel)
+            
+            if character:
+                # Use subquery for character filtering
+                character_messages = (
+                    session.query(MessageCharacterModel.message_id)
+                    .filter(MessageCharacterModel.character_name == character)
+                    .subquery()
                 )
-                .distinct()
+                query = query.filter(SiaMessageModel.id.in_(character_messages.select()))
+            
+            # Apply other filters
+            if id:
+                query = query.filter_by(id=id)
+            if platform:
+                query = query.filter_by(platform=platform)
+            if author:
+                query = query.filter_by(author=author)
+            if not_author:
+                query = query.filter(SiaMessageModel.author != not_author)
+            if conversation_id:
+                query = query.filter_by(conversation_id=conversation_id)
+            if from_datetime:
+                query = query.filter(SiaMessageModel.wen_posted >= from_datetime)
+            if is_post:
+                query = query.filter(SiaMessageModel.message_type == "post")
+            if flagged != 2:
+                query = query.filter_by(flagged=bool(flagged))
+
+            # Handle sorting
+            if sort_by:
+                order_func = asc if sort_order == "asc" else desc
+                query = query.order_by(order_func(sort_by))
+
+            # Execute query and convert to schema
+            messages = query.all()
+            return [SiaMessageSchema.from_orm(message) for message in messages]
+
+    def add_message(
+        self,
+        message_id: str,
+        message: SiaMessageGeneratedSchema,
+        message_type: str = None,
+        original_data: dict = None,
+        character: str = None,
+    ) -> SiaMessageSchema:
+        with self.session_scope() as session:
+            message_model = SiaMessageModel(
+                id=str(message_id),
+                platform=message.platform,
+                author=message.author,
+                content=message.content,
+                conversation_id=message.conversation_id or message_id,
+                response_to=message.response_to,
+                flagged=message.flagged,
+                message_metadata=message.message_metadata,
+                original_data=original_data,
+                message_type=message_type
             )
 
-            # Then exclude messages from these conversations
-            query = query.filter(
-                ~SiaMessageModel.conversation_id.in_(our_initiated_conversations)
-            )
-
-        # if is_post is not None:
-        if is_post:
-            query = query.filter(SiaMessageModel.message_type == "post")
-
-        if flagged != 2:
-            query = query.filter_by(flagged=bool(flagged))
-
-        if sort_by:
-            if sort_order == "asc":
-                query = query.order_by(asc(sort_by))
-            else:
-                query = query.order_by(desc(sort_by))
-        posts = query.all()
-        session.close()
-        return [SiaMessageSchema.from_orm(post) for post in posts]
-
+            try:
+                # Create character association
+                character_model = MessageCharacterModel(
+                    message_id=str(message_id),
+                    character_name=character or self.character.name,
+                    created_at=message_model.wen_posted  # Use same timestamp as message
+                )
+                message_model.characters.append(character_model)
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error adding character association: {e}")
+            
+            session.add(message_model)
+            session.flush()  # Ensure all data is populated
+            
+            return SiaMessageSchema.from_orm(message_model)
+    
     def get_conversation_ids(self):
         session = self.Session()
         conversation_ids = (
@@ -160,10 +148,29 @@ class SiaMemory:
 
     def clear_messages(self):
         session = self.Session()
-        session.query(SiaMessageModel).filter_by(character=self.character.name).delete()
-        session.commit()
-        session.close()
-
+        try:
+            # Find all message IDs associated with this character
+            message_ids = (
+                session.query(SiaMessageModel.id)
+                .join(MessageCharacterModel)
+                .filter(MessageCharacterModel.character_name == self.character.name)
+                .all()
+            )
+            
+            # Delete the messages
+            if message_ids:
+                message_ids = [id[0] for id in message_ids]
+                session.query(SiaMessageModel)\
+                    .filter(SiaMessageModel.id.in_(message_ids))\
+                    .delete(synchronize_session=False)
+                
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+        
     def reset_database(self):
         Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)

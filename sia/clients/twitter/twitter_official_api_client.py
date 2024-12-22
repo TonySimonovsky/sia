@@ -83,7 +83,7 @@ class SiaTwitterOfficial(SiaClientInterface):
         self,
         message: SiaMessageGeneratedSchema,
         media: dict = [],
-        in_reply_to_message_id: str = None,
+        in_reply_to_message_id: str = None
     ) -> str:
 
         media_ids = None
@@ -138,7 +138,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             content=tweet.text,
             platform="twitter",
             author=author.username,
-            character=self.character.name,
+            # character=self.character.name,
             response_to=None,
             wen_posted=tweet.created_at,
             flagged=0,
@@ -745,12 +745,12 @@ class SiaTwitterOfficial(SiaClientInterface):
             post, media = self.sia.generate_post(
                 platform="twitter",
                 author=self.character.twitter_username,
-                character=self.character.name,
+                # character=self.character.name,
             )
 
             if post or media:
                 print(f"Generated post: {len(post.content)} characters")
-                tweet_id = self.publish_message(post, media)
+                tweet_id = self.publish_message(message=post, media=media)
                 if tweet_id and tweet_id is not Forbidden:
                     self.memory.add_message(message_id=tweet_id, message=post, message_type="post")
 
@@ -864,7 +864,8 @@ class SiaTwitterOfficial(SiaClientInterface):
                         continue
 
                     tweet_id = self.publish_message(
-                        post=generated_response, in_reply_to_message_id=r.id
+                        message=generated_response,
+                        in_reply_to_message_id=r.id
                     )
                     self.memory.add_message(
                         message_id=tweet_id,
@@ -1046,7 +1047,9 @@ class SiaTwitterOfficial(SiaClientInterface):
             metadata = {}
             if not self.testing:
                 tweet_id = self.publish_message(
-                    ai_response, media=None, in_reply_to_message_id=tweet_to_respond.id
+                    message=ai_response,
+                    media=None,
+                    in_reply_to_message_id=tweet_to_respond.id
                 )
 
                 log_message(
@@ -1072,7 +1075,7 @@ class SiaTwitterOfficial(SiaClientInterface):
                     conversation_id=tweet_to_respond.id,
                     content=ai_response.content,
                     platform="twitter",
-                    character=self.character.name,
+                    # character=self.character.name,
                     author=self.character.twitter_username,
                     response_to=tweet_to_respond.id,
                     wen_posted=datetime.now(timezone.utc),

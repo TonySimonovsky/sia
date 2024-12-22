@@ -83,7 +83,7 @@ class SiaTelegram(SiaClientInterface):
             content=message.text,
             platform="telegram",
             author=message.from_user.username or str(message.from_user.id),
-            character=self.sia.character.name,
+            # character=self.sia.character.name,
             response_to=str(message.reply_to_message.message_id) if message.reply_to_message else None,
             wen_posted=message.date,
             flagged=0,
@@ -124,38 +124,53 @@ class SiaTelegram(SiaClientInterface):
     async def _handle_group_message(self, message: TgMessage):
         """Handle incoming messages"""
         log_message(self.logger, "info", self, f"Processing message: {message.text}")
+        
+        chat_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("chat_id", "")
 
         try:
             # Convert Telegram message to Sia message format
             sia_message = self.telegram_message_to_sia_message(message)
-            message_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("chat_id", "") + "-" + str(message.message_id)
+            message_id = f"{chat_id}-{str(message.message_id)}"
             
             # Save message to database
             stored_message = self.sia.memory.add_message(
                 message_id=message_id,
-                message=sia_message
+                message=sia_message,
+                character=self.sia.character.name
             )
             
             log_message(self.logger, "info", self, f"Stored message: {stored_message}")
 
-            # Respond to mentions
+            should_respond = False
+
+            # Check for direct mentions
             if f"@{self.sia.character.platform_settings.get('telegram', {}).get('username', '<no_username>')}" in message.text:
                 log_message(self.logger, "info", self, f"Responding to mention: {message.text}")
+                should_respond = True
+            # Check if message is a reply to bot's message
+            elif message.reply_to_message and message.reply_to_message.from_user.username == self.sia.character.platform_settings.get('telegram', {}).get('username'):
+                log_message(self.logger, "info", self, f"Responding to reply to bot's message: {message.text}")
+                should_respond = True
 
-                # Generate and send response if appropriate
-                if self.sia.character.responding.get("enabled", True):
-                    response = self.sia.generate_response(stored_message)
-                    if response:
-                        await self.publish_message(
-                            response,
-                            in_reply_to_message_id=str(message.message_id)
-                        )
-
+            if should_respond and self.sia.character.responding.get("enabled", True):
+                response = self.sia.generate_response(stored_message)
+                if response:
+                    message_id = await self.publish_message(
+                        response,
+                        in_reply_to_message_id=str(message.message_id)
+                    )
+                    self.sia.memory.add_message(
+                        message_id=f"{chat_id}-{message_id}",
+                        message=response,
+                        message_type="reply",
+                        character=self.sia.character.name
+                    )
             else:
-                log_message(self.logger, "info", self, f"No mention found: {message.text}")
+                log_message(self.logger, "info", self, f"No mention or reply to bot found: {message.text}")
 
         except Exception as e:
             log_message(self.logger, "error", self, f"Error handling message: {e}")
+
 
     async def post(self):
         """Implementation of periodic posting"""
@@ -192,14 +207,19 @@ class SiaTelegram(SiaClientInterface):
             post, media = self.sia.generate_post(
                 platform="telegram",
                 author=self.sia.character.platform_settings.get("telegram", {}).get("username", ""),
-                character=self.sia.character.name,
+                # character=self.sia.character.name,
                 conversation_id=chat_id
             )
 
             if post or media:
                 message_id = await self.publish_message(post) # , media
                 if message_id:
-                    self.sia.memory.add_message(message_id=f"{chat_id}-{message_id}", message=post, message_type="post")
+                    self.sia.memory.add_message(
+                        message_id=f"{chat_id}-{message_id}", 
+                        message=post, 
+                        message_type="post",
+                        character=self.sia.character.name
+                    )
                     
                     # # Update next post time
                     # self.sia.character.platform_settings["telegram"] = {
@@ -225,14 +245,17 @@ class SiaTelegram(SiaClientInterface):
                     await asyncio.sleep(60)  # Check every minute
             
             # Start both the polling and posting tasks
-            await asyncio.gather(
-                self.dp.start_polling(
-                    self.bot,
-                    allowed_updates=["message"],
-                    skip_updates=False
-                ),
-                periodic_post()
+            polling_task = self.dp.start_polling(
+                self.bot,
+                allowed_updates=["message"],
+                skip_updates=False,
+                handle_signals=False  # Add this line
             )
+            
+            posting_task = periodic_post()
+            
+            # Run both tasks concurrently
+            await asyncio.gather(polling_task, posting_task)
             
         except Exception as e:
             log_message(self.logger, "error", self, f"Error in main loop: {e}")

@@ -58,7 +58,7 @@ class SiaTelegram(SiaClientInterface):
 
         message = SiaMessageGeneratedSchema(
             platform=self.platform_name,
-            character=self.sia.character.name,
+            # character=self.sia.character.name,
             author=username,
             content=message_text,
             conversation_id=str(chat_id),
@@ -66,7 +66,8 @@ class SiaTelegram(SiaClientInterface):
 
         self.sia.memory.add_message(
             message_id=f"{chat_id}-{update.message.message_id}",
-            message=message
+            message=message,
+            character=self.sia.character.name
         )
 
         print(
@@ -155,7 +156,7 @@ class SiaTelegram(SiaClientInterface):
                 post, media = self.sia.generate_post(
                     platform=self.platform_name,
                     author=bot_username,
-                    character=self.sia.character.name,
+                    # character=self.sia.character.name,
                 )
 
                 try:
@@ -171,7 +172,7 @@ class SiaTelegram(SiaClientInterface):
                         message_id=f"{self.chat_id}-{message_send_response.message_id}",
                         message=SiaMessageGeneratedSchema(
                             platform=self.platform_name,
-                            character=self.sia.character.name,
+                            # character=self.sia.character.name,
                             author=bot_username,
                             content=post.content,
                             conversation_id=str(self.chat_id),
