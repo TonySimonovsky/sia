@@ -185,7 +185,7 @@
             "username": "realsia_bot",
             "post": {
                 "enabled": true,
-                "post_frequency": 2,
+                "post_frequency": 4,
                 "chat_id": "-1002312730638"
             }
         }

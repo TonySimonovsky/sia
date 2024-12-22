@@ -38,7 +38,7 @@ async def main():
         logging_enabled=logging_enabled,
     )
 
-    await sia.run()
+    sia.run()
 
 
 if __name__ == "__main__":
