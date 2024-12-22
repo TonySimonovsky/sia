@@ -131,9 +131,9 @@ class SiaTelegram(SiaClientInterface):
 
     async def _handle_group_message(self, message: TgMessage):
         """Handle incoming messages"""
-        log_message(self.logger, "info", self, f"Processing message: {message.text}")
+        log_message(self.logger, "info", self, f"Processing message id {message.message_id} in chat {message.chat.id}: {message.text}")
         
-        chat_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("chat_id", "")
+        chat_id = message.chat.id
 
         try:
             # Convert Telegram message to Sia message format
