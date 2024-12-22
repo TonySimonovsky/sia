@@ -100,13 +100,21 @@ class SiaTelegram(SiaClientInterface):
         try:
             # Send text message or media
             if media:
-                media_group = [InputMediaPhoto(media=open(file, 'rb')) for file in media]
+                from aiogram.types import FSInputFile
+                media_group = [InputMediaPhoto(media=FSInputFile(file)) for file in media]
+                # media_group = [InputMediaPhoto(media=open(file, 'rb')) for file in media]
                 sent_messages = await self.bot.send_media_group(
                     chat_id=int(message.conversation_id),
                     media=media_group,
                     reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
                 )
                 return str(sent_messages[0].message_id)
+                # sent_messages = await self.bot.send_media_group(
+                #     chat_id=int(message.conversation_id),
+                #     media=media_group,
+                #     reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
+                # )
+                # return str(sent_messages[0].message_id)
             else:
                 sent_message = await self.bot.send_message(
                     chat_id=int(message.conversation_id),
@@ -200,6 +208,8 @@ class SiaTelegram(SiaClientInterface):
 
         latest_post = latest_post[0] if latest_post else None
         next_post_time = latest_post.wen_posted + timedelta(hours=post_frequency) if latest_post else datetime.now()-timedelta(seconds=10)
+        log_message(self.logger, "info", self, f"Post frequency: {post_frequency}")
+        log_message(self.logger, "info", self, f"Latest post: {latest_post}")
         log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(): {datetime.now()}")
         
         if datetime.now() > next_post_time:
@@ -212,7 +222,7 @@ class SiaTelegram(SiaClientInterface):
             )
 
             if post or media:
-                message_id = await self.publish_message(post) # , media
+                message_id = await self.publish_message(message=post, media=media)
                 if message_id:
                     self.sia.memory.add_message(
                         message_id=f"{chat_id}-{message_id}", 
