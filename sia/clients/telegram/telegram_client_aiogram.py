@@ -252,6 +252,11 @@ class SiaTelegram(SiaClientInterface):
                     # }
                     # self.sia.memory.update_character_settings(character_settings)
 
+    async def run(self):
+        """Main loop to run the Telegram bot"""
+        if not self.sia.character.platform_settings.get("telegram", {}).get("enabled", True):
+            return
+
         async def start_polling_with_retry(retries=3):
             for attempt in range(retries):
                 try:
