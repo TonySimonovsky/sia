@@ -106,6 +106,35 @@ class SiaMemory:
         character: str = None,
     ) -> SiaMessageSchema:
         with self.session_scope() as session:
+            # First check if message exists
+            existing_message = session.query(SiaMessageModel).filter_by(id=str(message_id)).first()
+            if existing_message:
+                # Check if character association exists
+                character_name = character or self.character.name
+                existing_link = session.query(MessageCharacterModel).filter_by(
+                    message_id=str(message_id),
+                    character_name=character_name
+                ).first()
+                
+                if existing_link:
+                    # Both message and link exist, return existing message
+                    return SiaMessageSchema.from_orm(existing_message)
+                
+                # Message exists but link doesn't - create new link
+                try:
+                    character_model = MessageCharacterModel(
+                        message_id=str(message_id),
+                        character_name=character_name,
+                        created_at=existing_message.wen_posted
+                    )
+                    existing_message.characters.append(character_model)
+                    session.flush()
+                    return SiaMessageSchema.from_orm(existing_message)
+                except Exception as e:
+                    log_message(self.logger, "error", self, f"Error adding character association: {e}")
+                    return SiaMessageSchema.from_orm(existing_message)
+
+            # Message doesn't exist - create new message and link
             message_model = SiaMessageModel(
                 id=str(message_id),
                 platform=message.platform,
@@ -118,20 +147,19 @@ class SiaMemory:
                 original_data=original_data,
                 message_type=message_type
             )
-
+            
             try:
-                # Create character association
                 character_model = MessageCharacterModel(
                     message_id=str(message_id),
                     character_name=character or self.character.name,
-                    created_at=message_model.wen_posted  # Use same timestamp as message
+                    created_at=message_model.wen_posted
                 )
                 message_model.characters.append(character_model)
             except Exception as e:
                 log_message(self.logger, "error", self, f"Error adding character association: {e}")
             
             session.add(message_model)
-            session.flush()  # Ensure all data is populated
+            session.flush()
             
             return SiaMessageSchema.from_orm(message_model)
     
