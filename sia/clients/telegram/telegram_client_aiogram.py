@@ -89,7 +89,6 @@ class SiaTelegram(SiaClientInterface):
                     await asyncio.sleep(1 * (attempt + 1))
         
         raise Exception("Could not resolve Telegram conflict after clearing webhook")
-
         
     def telegram_message_to_sia_message(
         self, message: TgMessage
@@ -195,7 +194,6 @@ class SiaTelegram(SiaClientInterface):
         except Exception as e:
             log_message(self.logger, "error", self, f"Error handling message: {e}")
 
-
     async def post(self):
         """Implementation of periodic posting"""
         if not self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("enabled", False):
@@ -254,29 +252,33 @@ class SiaTelegram(SiaClientInterface):
                     # }
                     # self.sia.memory.update_character_settings(character_settings)
 
-
     async def run(self):
         """Main loop to run the Telegram bot"""
         if not self.sia.character.platform_settings.get("telegram", {}).get("enabled", True):
             return
 
-        async def handle_telegram_conflict(retries=3):
+        async def start_polling_with_retry(retries=3):
             for attempt in range(retries):
                 try:
+                    log_message(
+                        self.logger,
+                        "info",
+                        self,
+                        f"Starting polling attempt {attempt + 1}/{retries}"
+                    )
                     return await self.dp.start_polling(
                         self.bot,
                         allowed_updates=["message"],
-                        skip_updates=False,
-                        handle_signals=False
+                        skip_updates=False
                     )
                 except TelegramConflictError as e:
                     log_message(
-                        self.logger, 
-                        "warning", 
-                        self, 
+                        self.logger,
+                        "warning",
+                        self,
                         f"Conflict detected (attempt {attempt + 1}/{retries}): {e}"
                     )
-                    if attempt == retries - 1:  # Last attempt
+                    if attempt == retries - 1:
                         log_message(
                             self.logger,
                             "info",
@@ -284,36 +286,66 @@ class SiaTelegram(SiaClientInterface):
                             "Clearing webhook as last resort..."
                         )
                         await self.bot.delete_webhook(drop_pending_updates=True)
-                    else:
-                        # Wait with exponential backoff before retry
-                        await asyncio.sleep(1 * (attempt + 1))
-            
-            raise Exception("Could not resolve Telegram conflict after clearing webhook")
+                    await asyncio.sleep(1 * (2 ** attempt))  # Exponential backoff
+                except Exception as e:
+                    log_message(
+                        self.logger,
+                        "error",
+                        self,
+                        f"Unexpected error during polling attempt: {e}"
+                    )
+                    if attempt == retries - 1:
+                        raise
+
+        async def periodic_post():
+            while True:
+                try:
+                    await self.post()
+                except Exception as e:
+                    log_message(
+                        self.logger,
+                        "error",
+                        self,
+                        f"Error in periodic post: {e}"
+                    )
+                finally:
+                    await asyncio.sleep(60)  # Check every minute
 
         try:
             log_message(self.logger, "info", self, "Starting Telegram bot...")
-            print("Starting polling...")  # Debug print
             
-            # Create background task for posting
-            async def periodic_post():
-                while True:
-                    await self.post()
-                    await asyncio.sleep(60)  # Check every minute
+            # Create tasks
+            polling_task = asyncio.create_task(start_polling_with_retry())
+            posting_task = asyncio.create_task(periodic_post())
             
-            # Start both the polling and posting tasks
-            try:
-                polling_task = await handle_telegram_conflict()
-            except Exception as e:
-                log_message(self.logger, "error", self, f"Failed to start polling: {e}")
-                return False
+            # Wait for both tasks
+            await asyncio.gather(
+                polling_task,
+                posting_task,
+                return_exceptions=True
+            )
             
-            posting_task = periodic_post()
-            
-            # Run both tasks concurrently
-            await asyncio.gather(polling_task, posting_task)
-            
+        except asyncio.CancelledError:
+            log_message(self.logger, "info", self, "Bot shutdown requested")
         except Exception as e:
-            log_message(self.logger, "error", self, f"Error in main loop: {e}")
+            log_message(
+                self.logger,
+                "error",
+                self,
+                f"Critical error in main loop: {e}"
+            )
             return False
+        finally:
+            # Cleanup
+            try:
+                await self.bot.session.close()
+                log_message(self.logger, "info", self, "Bot session closed")
+            except Exception as e:
+                log_message(
+                    self.logger,
+                    "error",
+                    self,
+                    f"Error during cleanup: {e}"
+                )
 
         return True
