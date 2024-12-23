@@ -252,11 +252,6 @@ class SiaTelegram(SiaClientInterface):
                     # }
                     # self.sia.memory.update_character_settings(character_settings)
 
-    async def run(self):
-        """Main loop to run the Telegram bot"""
-        if not self.sia.character.platform_settings.get("telegram", {}).get("enabled", True):
-            return
-
         async def start_polling_with_retry(retries=3):
             for attempt in range(retries):
                 try:
@@ -266,13 +261,20 @@ class SiaTelegram(SiaClientInterface):
                         self,
                         f"Starting polling attempt {attempt + 1}/{retries}"
                     )
-                    # Disable signal handlers when starting polling
+                    
+                    # First, try to delete any existing webhook
+                    await self.bot.delete_webhook(drop_pending_updates=True)
+                    
+                    # Wait a moment for the webhook deletion to take effect
+                    await asyncio.sleep(1)
+                    
                     return await self.dp.start_polling(
                         self.bot,
                         allowed_updates=["message"],
-                        skip_updates=False,
-                        handle_signals=False  # Add this line to disable signal handlers
+                        skip_updates=True,  # Changed to True to avoid conflicts
+                        handle_signals=False
                     )
+                    
                 except TelegramConflictError as e:
                     log_message(
                         self.logger,
@@ -280,15 +282,11 @@ class SiaTelegram(SiaClientInterface):
                         self,
                         f"Conflict detected (attempt {attempt + 1}/{retries}): {e}"
                     )
-                    if attempt == retries - 1:
-                        log_message(
-                            self.logger,
-                            "info",
-                            self,
-                            "Clearing webhook as last resort..."
-                        )
-                        await self.bot.delete_webhook(drop_pending_updates=True)
-                    await asyncio.sleep(1 * (2 ** attempt))  # Exponential backoff
+                    
+                    # Clear any pending updates and webhook before retrying
+                    await self.bot.delete_webhook(drop_pending_updates=True)
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    
                 except Exception as e:
                     log_message(
                         self.logger,
