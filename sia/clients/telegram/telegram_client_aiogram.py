@@ -266,10 +266,12 @@ class SiaTelegram(SiaClientInterface):
                         self,
                         f"Starting polling attempt {attempt + 1}/{retries}"
                     )
+                    # Disable signal handlers when starting polling
                     return await self.dp.start_polling(
                         self.bot,
                         allowed_updates=["message"],
-                        skip_updates=False
+                        skip_updates=False,
+                        handle_signals=False  # Add this line to disable signal handlers
                     )
                 except TelegramConflictError as e:
                     log_message(
