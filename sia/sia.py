@@ -471,6 +471,9 @@ class Sia:
                 ------------
 
                 Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
+                
+                Important instructions:
+                {instructions}
 
                 Examples:
                 - if one of your previous messages starts with a question, your new response must not start with a question.
@@ -508,6 +511,7 @@ class Sia:
             "communication_requirements": self.character.prompts.get(
                 "communication_requirements"
             ),
+            "important_instructions": self.character.instructions,
             "platform": platform,
             "message": message_to_respond_str,
             "conversation": conversation_str,
