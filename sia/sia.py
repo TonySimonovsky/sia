@@ -352,7 +352,7 @@ class Sia:
                     for msg in conversation
                 ]
             )
-            log_message(self.logger, "info", self, f"Conversation: {conversation_str}")
+            log_message(self.logger, "info", self, f"Conversation: {conversation_str.replace('\n', ' ')}")
         else:
             pass
 
@@ -360,7 +360,7 @@ class Sia:
             f"[{message.wen_posted}] {message.author}: {message.content}"
         )
         log_message(
-            self.logger, "info", self, f"Message to respond: {message_to_respond_str}"
+            self.logger, "info", self, f"Message to respond (id {message.id}): {message_to_respond_str}"
         )
 
         # do not answer if the message does not pass the filtering rules but if
