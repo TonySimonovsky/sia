@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
 from aiogram.types import Message as TgMessage, InputMediaPhoto
 from aiogram.client.default import DefaultBotProperties
+from aiogram.exceptions import TelegramConflictError
 
 from pydantic import BaseModel
 
@@ -73,6 +74,21 @@ class SiaTelegram(SiaClientInterface):
             await self._handle_group_message(message)
             
         print("Message handlers set up")  # Debug print
+
+    async def handle_telegram_conflict(bot: Bot, retries=3):
+        for attempt in range(retries):
+            try:
+                return await bot.get_updates()
+            except TelegramConflictError as e:
+                print(f"Conflict detected (attempt {attempt + 1}/{retries})")
+                if attempt == retries - 1:  # Last attempt
+                    print("Clearing webhook as last resort...")
+                    await bot.delete_webhook(drop_pending_updates=True)
+                else:
+                    # Wait with exponential backoff before retry
+                    await asyncio.sleep(1 * (attempt + 1))
+        
+        raise Exception("Could not resolve Telegram conflict after clearing webhook")
 
         
     def telegram_message_to_sia_message(
@@ -244,6 +260,36 @@ class SiaTelegram(SiaClientInterface):
         if not self.sia.character.platform_settings.get("telegram", {}).get("enabled", True):
             return
 
+        async def handle_telegram_conflict(retries=3):
+            for attempt in range(retries):
+                try:
+                    return await self.dp.start_polling(
+                        self.bot,
+                        allowed_updates=["message"],
+                        skip_updates=False,
+                        handle_signals=False
+                    )
+                except TelegramConflictError as e:
+                    log_message(
+                        self.logger, 
+                        "warning", 
+                        self, 
+                        f"Conflict detected (attempt {attempt + 1}/{retries}): {e}"
+                    )
+                    if attempt == retries - 1:  # Last attempt
+                        log_message(
+                            self.logger,
+                            "info",
+                            self,
+                            "Clearing webhook as last resort..."
+                        )
+                        await self.bot.delete_webhook(drop_pending_updates=True)
+                    else:
+                        # Wait with exponential backoff before retry
+                        await asyncio.sleep(1 * (attempt + 1))
+            
+            raise Exception("Could not resolve Telegram conflict after clearing webhook")
+
         try:
             log_message(self.logger, "info", self, "Starting Telegram bot...")
             print("Starting polling...")  # Debug print
@@ -255,12 +301,11 @@ class SiaTelegram(SiaClientInterface):
                     await asyncio.sleep(60)  # Check every minute
             
             # Start both the polling and posting tasks
-            polling_task = self.dp.start_polling(
-                self.bot,
-                allowed_updates=["message"],
-                skip_updates=False,
-                handle_signals=False  # Add this line
-            )
+            try:
+                polling_task = await handle_telegram_conflict()
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Failed to start polling: {e}")
+                return False
             
             posting_task = periodic_post()
             
