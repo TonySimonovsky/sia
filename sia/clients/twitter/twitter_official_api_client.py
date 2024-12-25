@@ -647,7 +647,7 @@ class SiaTwitterOfficial(SiaClientInterface):
     ) -> SiaMessageSchema:
         tweets_str_for_prompt = tweets[0].printable_list(tweets)
         
-        log_message(self.logger, "info", self, f"Tweets to choose from: {tweets_str_for_prompt}")
+        # log_message(self.logger, "info", self, f"Tweets to choose from: {tweets_str_for_prompt}")
 
         class Decision(BaseModel):
             tweet_id: str
