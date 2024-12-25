@@ -238,11 +238,6 @@ class SiaTwitterOfficial(SiaClientInterface):
                     f"Message with id {
                         tweet.id} already exists in the database, returning it without adding to the database",
                 )
-                # if exclude_responded_to:
-                #     message_responses_in_db = self.memory.get_messages(conversation_id=str(tweet.id), flagged=2)
-                #     if message_responses_in_db:
-                #         log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
-                #         continue
                 return get_message_in_db[0]
 
             # if the tweet is not in the database
@@ -279,13 +274,6 @@ class SiaTwitterOfficial(SiaClientInterface):
 
         for tweet in tweets.data:
             author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
-            # log_message(
-            #     self.logger,
-            #     "info",
-            #     self,
-            #     f"[save_tweets_to_db] Processing tweet: {
-            #         tweet.id}, author {author}",
-            # )
 
             # exclude tweets from the character themselves
             #   as they've been added when creting and posting them
@@ -407,7 +395,11 @@ class SiaTwitterOfficial(SiaClientInterface):
                                     )
                                     
                                     if exclude_responded_to:
-                                        message_responses_in_db = self.memory.get_messages(response_to=str(tweet.id), flagged=2)
+                                        message_responses_in_db = self.memory.get_messages(
+                                            response_to=str(included_tweet.id),
+                                            author=self.character.twitter_username,
+                                            flagged=2,
+                                        )
                                         if message_responses_in_db:
                                             log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
                                             continue
@@ -420,6 +412,9 @@ class SiaTwitterOfficial(SiaClientInterface):
                                         self,
                                         f"Error adding referenced tweet: {e}",
                                     )
+
+        # if exclude_responded_to:
+        #     messages = [message for message in messages if message.response_to is None]
 
         return messages
 
