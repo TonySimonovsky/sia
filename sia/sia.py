@@ -73,15 +73,15 @@ class Sia:
         
         self.run_all_modules()
         
-        self.abilities = {}
-        self.collect_abilities()
+    #     self.abilities = {}
+    #     self.collect_abilities()
         
-    def collect_abilities(self):
-        """Collect abilities from all clients and store them in Sia's abilities property"""
-        self.abilities = {}
+    # def collect_abilities(self):
+    #     """Collect abilities from all clients and store them in Sia's abilities property"""
+    #     self.abilities = {}
 
-        if self.telegram:
-            self.abilities.update(self.telegram.abilities)
+    #     if self.telegram:
+    #         self.abilities.update(self.telegram.abilities)
 
 
     def run_all_modules(self):
