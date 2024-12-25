@@ -70,8 +70,19 @@ class Sia:
         self.character.logging_enabled = logging_enabled
 
         self.knowledge_modules = [kmc(sia=self) for kmc in knowledge_module_classes]
-
+        
         self.run_all_modules()
+        
+        self.abilities = {}
+        self.collect_abilities()
+        
+    def collect_abilities(self):
+        """Collect abilities from all clients and store them in Sia's abilities property"""
+        self.abilities = {}
+
+        if self.telegram:
+            self.abilities.update(self.telegram.abilities)
+
 
     def run_all_modules(self):
         import threading
@@ -511,7 +522,7 @@ class Sia:
             "communication_requirements": self.character.prompts.get(
                 "communication_requirements"
             ),
-            "important_instructions": self.character.instructions,
+            "instructions": self.character.instructions,
             "platform": platform,
             "message": message_to_respond_str,
             "conversation": conversation_str,
@@ -602,6 +613,8 @@ class Sia:
     def run(self):
         """Run all clients concurrently using threads"""
         threads = []
+        
+        # print(f"Abilities: {self.abilities}")
         
         # Add Telegram thread if enabled
         if self.telegram:
