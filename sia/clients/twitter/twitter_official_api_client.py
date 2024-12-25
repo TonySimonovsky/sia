@@ -93,9 +93,9 @@ class SiaTwitterOfficial(SiaClientInterface):
                 media_ids.append(self.upload_media(m))
 
         try:
-            print(f"message: {message}")
-            print(f"media_ids: {media_ids}")
-            print(f"in_reply_to_tweet_id: {in_reply_to_message_id}")
+            # print(f"message: {message}")
+            # print(f"media_ids: {media_ids}")
+            # print(f"in_reply_to_tweet_id: {in_reply_to_message_id}")
 
             response = self.client.create_tweet(
                 text=message.content,
@@ -646,6 +646,8 @@ class SiaTwitterOfficial(SiaClientInterface):
         self, tweets: list[SiaMessageSchema]
     ) -> SiaMessageSchema:
         tweets_str_for_prompt = tweets[0].printable_list(tweets)
+        
+        log_message(self.logger, "info", self, f"Tweets to choose from: {tweets_str_for_prompt}")
 
         class Decision(BaseModel):
             tweet_id: str
@@ -989,11 +991,13 @@ class SiaTwitterOfficial(SiaClientInterface):
                 # tweets_messages = self.exclude_tweet_messages_already_engaged(tweets_messages)
                 # log_message(self.logger, "info", self, f"{len(tweets_messages)} tweets to engage with after excluding already engaged")
                 tweets_to_engage.extend(tweets_messages)
+
             if not tweets_to_engage:
                 log_message(
                     self.logger, "info", self, f"No tweets found to engage with"
                 )
                 continue
+
             if self.testing:
                 log_message(
                     self.logger_testing,

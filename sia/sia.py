@@ -371,7 +371,7 @@ class Sia:
             f"[{message.wen_posted}] {message.author}: {message.content}"
         )
         log_message(
-            self.logger, "info", self, f"Message to respond (id {message.id}): {message_to_respond_str}"
+            self.logger, "info", self, f"Message to respond (id {message.id}): {message_to_respond_str.replace('\n', ' ')}"
         )
 
         # do not answer if the message does not pass the filtering rules but if
