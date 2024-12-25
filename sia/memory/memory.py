@@ -50,6 +50,7 @@ class SiaMemory:
         not_author: str = None,
         character: str = None,
         conversation_id: str = None,
+        response_to: str = None,
         flagged: int = 0,
         sort_by: str = None,
         sort_order: str = "asc",
@@ -81,6 +82,8 @@ class SiaMemory:
                 query = query.filter(SiaMessageModel.author != not_author)
             if conversation_id:
                 query = query.filter_by(conversation_id=conversation_id)
+            if response_to:
+                query = query.filter_by(response_to=response_to)
             if from_datetime:
                 query = query.filter(SiaMessageModel.wen_posted >= from_datetime)
             if is_post:

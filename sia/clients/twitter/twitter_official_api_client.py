@@ -279,13 +279,13 @@ class SiaTwitterOfficial(SiaClientInterface):
 
         for tweet in tweets.data:
             author = self.get_user_by_id_from_twp_response(tweets, tweet.author_id)
-            log_message(
-                self.logger,
-                "info",
-                self,
-                f"[save_tweets_to_db] Processing tweet: {
-                    tweet.id}, author {author}",
-            )
+            # log_message(
+            #     self.logger,
+            #     "info",
+            #     self,
+            #     f"[save_tweets_to_db] Processing tweet: {
+            #         tweet.id}, author {author}",
+            # )
 
             # exclude tweets from the character themselves
             #   as they've been added when creting and posting them
@@ -326,7 +326,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             #    been responded to by the character,
             if exclude_responded_to:
                 message_responses_in_db = self.memory.get_messages(
-                    conversation_id=str(tweet.id),
+                    response_to=str(tweet.id),
                     author=self.character.twitter_username,
                     flagged=2,
                 )
