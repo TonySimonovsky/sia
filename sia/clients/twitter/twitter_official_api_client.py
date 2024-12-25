@@ -290,7 +290,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             # exclude tweets from the character themselves
             #   as they've been added when creting and posting them
             if exclude_own:
-                log_message(self.logger, "info", self, f"author of the tweet: {author}")
+                # log_message(self.logger, "info", self, f"author of the tweet: {author}")
                 if author == self.character.twitter_username:
                     continue
 
@@ -405,6 +405,12 @@ class SiaTwitterOfficial(SiaClientInterface):
                                     tweet_message = self.save_tweet_to_db(
                                         tweet=included_tweet, author=author
                                     )
+                                    
+                                    if exclude_responded_to:
+                                        message_responses_in_db = self.memory.get_messages(response_to=str(tweet.id), flagged=2)
+                                        if message_responses_in_db:
+                                            log_message(self.logger, "info", self, f"Message with id {tweet.id} has already been responded to")
+                                            continue
                                     messages.append(tweet_message)
 
                                 except Exception as e:
