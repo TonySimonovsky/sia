@@ -716,6 +716,8 @@ class SiaTwitterOfficial(SiaClientInterface):
 
     def post(self):
 
+        log_message(self.logger, "info", self, f"Starting post()...")
+
         character_settings = self.memory.get_character_settings()
 
         next_post_time = character_settings.character_settings.get("twitter", {}).get(
@@ -888,6 +890,8 @@ class SiaTwitterOfficial(SiaClientInterface):
                 log_message(self.logger, "info", self, "No new replies yet.")
 
     def engage(self, testing_rounds=3, search_period_hours=24):
+        
+        log_message(self.logger, "info", self, f"Checking for tweets to engage with...")
 
         # do not do anything
         #   if engagement is not enabled

@@ -576,27 +576,27 @@ class Sia:
     #     return tweet_id
 
 
-    def run_telegram(self):
-        if self.telegram:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                # Run the telegram client
-                loop.run_until_complete(self.telegram.run())
-            finally:
-                loop.close()
+    # def run_telegram(self):
+    #     if self.telegram:
+    #         # Create new event loop for this thread
+    #         loop = asyncio.new_event_loop()
+    #         asyncio.set_event_loop(loop)
+    #         try:
+    #             # Run the telegram client
+    #             loop.run_until_complete(self.telegram.run())
+    #         finally:
+    #             loop.close()
 
-    def run_twitter(self):
-        if self.twitter:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                # Run the twitter client
-                loop.run_until_complete(self.twitter.run())
-            finally:
-                loop.close()
+    # def run_twitter(self):
+    #     if self.twitter:
+    #         # Create new event loop for this thread
+    #         loop = asyncio.new_event_loop()
+    #         asyncio.set_event_loop(loop)
+    #         try:
+    #             # Run the twitter client
+    #             loop.run_until_complete(self.twitter.run())
+    #         finally:
+    #             loop.close()
 
 
     def run(self):
