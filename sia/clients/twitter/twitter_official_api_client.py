@@ -719,8 +719,6 @@ class SiaTwitterOfficial(SiaClientInterface):
 
     def post(self):
 
-        log_message(self.logger, "info", self, f"Starting post()...")
-
         character_settings = self.memory.get_character_settings()
 
         next_post_time = character_settings.character_settings.get("twitter", {}).get(
@@ -732,13 +730,10 @@ class SiaTwitterOfficial(SiaClientInterface):
             else "N/A"
         )
         now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"Current time: {now_time}")
         next_post_time_seconds = next_post_time - time.time()
         next_post_hours = next_post_time_seconds // 3600
         next_post_minutes = (next_post_time_seconds % 3600) // 60
-        print(
-            f"Next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)"
-        )
+        log_message(self.logger, "info", self, f"Current time: {now_time}, next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
 
         if (
             self.character.platform_settings.get("twitter", {})
@@ -754,7 +749,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             )
 
             if post or media:
-                print(f"Generated post: {len(post.content)} characters")
+                # log_message(self.logger, "info", self, f"Generated post: {len(post.content)} characters")
                 tweet_id = self.publish_message(message=post, media=media)
                 if tweet_id and tweet_id is not Forbidden:
                     self.memory.add_message(message_id=tweet_id, message=post, message_type="post")
@@ -918,6 +913,7 @@ class SiaTwitterOfficial(SiaClientInterface):
         messages_to_engage_in_db = self.memory.get_messages(
             platform="twitter",
             character=self.character.name,
+            response_to="NOT NULL",
             exclude_own_conversations=True,
             sort_by="wen_posted",
             sort_order="desc",

@@ -83,7 +83,10 @@ class SiaMemory:
             if conversation_id:
                 query = query.filter_by(conversation_id=conversation_id)
             if response_to:
-                query = query.filter_by(response_to=response_to)
+                if response_to == "NOT NULL":
+                    query = query.filter(SiaMessageModel.response_to != None)
+                else:
+                    query = query.filter_by(response_to=response_to)
             if from_datetime:
                 query = query.filter(SiaMessageModel.wen_posted >= from_datetime)
             if is_post:
