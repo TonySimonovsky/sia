@@ -790,6 +790,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             responses_sent = self.memory.get_messages(
                 platform="twitter",
                 character=self.character.name,
+                response_to="NOT NULL",
                 author=self.character.twitter_username,
                 sort_by="wen_posted",
                 sort_order="desc",
