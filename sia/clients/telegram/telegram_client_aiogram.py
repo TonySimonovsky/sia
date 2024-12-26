@@ -145,7 +145,7 @@ class SiaTelegram(SiaClientInterface):
 
     async def _handle_group_message(self, message: TgMessage):
         """Handle incoming messages"""
-        log_message(self.logger, "info", self, f"Processing message id {message.message_id} in chat {message.chat.id}: {message.text}")
+        log_message(self.logger, "info", self, f"Processing message: {message.text.replace('\n', ' ')}")
         
         chat_id = message.chat.id
 
