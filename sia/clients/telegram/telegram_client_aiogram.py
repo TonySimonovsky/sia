@@ -74,14 +74,14 @@ class SiaTelegram(SiaClientInterface):
             else:
                 log_message(self.logger, "info", self, f"Message is empty")
 
-    async def handle_telegram_conflict(bot: Bot, retries=3):
+    async def handle_telegram_conflict(self, bot: Bot, retries=3):
         for attempt in range(retries):
             try:
                 return await bot.get_updates()
             except TelegramConflictError as e:
-                print(f"Conflict detected (attempt {attempt + 1}/{retries})")
+                log_message(self.logger, "warning", self, f"Conflict detected (attempt {attempt + 1}/{retries})")
                 if attempt == retries - 1:  # Last attempt
-                    print("Clearing webhook as last resort...")
+                    log_message(self.logger, "warning", self, "Clearing webhook as last resort...")
                     await bot.delete_webhook(drop_pending_updates=True)
                 else:
                     # Wait with exponential backoff before retry
@@ -280,17 +280,20 @@ class SiaTelegram(SiaClientInterface):
                         self,
                         f"Starting polling attempt {attempt + 1}/{retries}"
                     )
+                            
+                    # First, try to handle any existing conflicts
+                    await self.handle_telegram_conflict(self.bot)
                     
-                    # First, try to delete any existing webhook
+                    # Then delete webhook
                     await self.bot.delete_webhook(drop_pending_updates=True)
-                    
+                                        
                     # Wait a moment for the webhook deletion to take effect
                     await asyncio.sleep(1)
                     
                     return await self.dp.start_polling(
                         self.bot,
                         allowed_updates=["message"],
-                        skip_updates=True,  # Changed to True to avoid conflicts
+                        skip_updates=True,
                         handle_signals=False
                     )
                     
