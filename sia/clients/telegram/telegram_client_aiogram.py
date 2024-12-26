@@ -154,7 +154,7 @@ class SiaTelegram(SiaClientInterface):
         message_id = f"{chat_id}-{str(message.message_id)}"
         
         # Check if the message already exists in the database
-        existing_message = self.sia.memory.get_message(message_id=message_id)
+        existing_message = self.sia.memory.get_messages(id=message_id)
         if existing_message:
             log_message(self.logger, "info", self, f"Message already exists in database: {existing_message}")
             stored_message = existing_message[0]
