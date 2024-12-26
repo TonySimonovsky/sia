@@ -68,11 +68,11 @@ class SiaTelegram(SiaClientInterface):
 
         @self.dp.message(F.chat.type.in_({"group", "supergroup"}))
         async def message_handler(message: TgMessage):
-            print(f"Handler triggered! Message: {message.text.replace('\n', ' ')}")  # Debug print
-            if message.text:
-                await self._handle_group_message(message)
-            else:
+            if not message.text:
                 log_message(self.logger, "info", self, f"Message is empty")
+                return
+            log_message(self.logger, "info", self, f"Handler triggered! Message: {message.text.replace('\n', ' ')}")  # Debug print
+            await self._handle_group_message(message)
 
     async def handle_telegram_conflict(self, bot: Bot, retries=3):
         for attempt in range(retries):
