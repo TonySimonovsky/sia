@@ -75,19 +75,49 @@ class SiaTelegram(SiaClientInterface):
             await self._handle_group_message(message)
 
     async def handle_telegram_conflict(self, bot: Bot, retries=3):
+        """Handle Telegram API conflicts with exponential backoff"""
+        base_delay = 1.0
+        
         for attempt in range(retries):
             try:
-                return await bot.get_updates()
+                # First try to delete webhook to ensure clean state
+                await bot.delete_webhook(drop_pending_updates=True)
+                await asyncio.sleep(1)  # Give time for webhook deletion to take effect
+                
+                # Then try to get updates
+                return await bot.get_updates(offset=-1, limit=1)
+                
             except TelegramConflictError as e:
-                log_message(self.logger, "warning", self, f"Conflict detected (attempt {attempt + 1}/{retries})")
+                delay = base_delay * (2 ** attempt)  # Exponential backoff
+                log_message(
+                    self.logger,
+                    "warning",
+                    self,
+                    f"Conflict detected (attempt {attempt + 1}/{retries}): {str(e)}\n"
+                    f"Sleep for {delay:.6f} seconds and try again... "
+                    f"(tryings = {attempt}, bot id = {bot.id})"
+                )
+                
                 if attempt == retries - 1:  # Last attempt
-                    log_message(self.logger, "warning", self, "Clearing webhook as last resort...")
+                    log_message(
+                        self.logger,
+                        "warning",
+                        self,
+                        "Final attempt: Clearing all updates..."
+                    )
+                    # On final attempt, try to force clear everything
                     await bot.delete_webhook(drop_pending_updates=True)
-                else:
-                    # Wait with exponential backoff before retry
-                    await asyncio.sleep(1 * (attempt + 1))
+                    # Get the latest update_id and skip all pending
+                    try:
+                        updates = await bot.get_updates(offset=-1, limit=1)
+                        if updates:
+                            await bot.get_updates(offset=updates[-1].update_id + 1)
+                    except Exception as e:
+                        log_message(self.logger, "error", self, f"Failed to clear updates: {e}")
+                
+                await asyncio.sleep(delay)
         
-        raise Exception("Could not resolve Telegram conflict after clearing webhook")
+        raise Exception(f"Could not resolve Telegram conflict after {retries} attempts")
         
     def telegram_message_to_sia_message(
         self, message: TgMessage
