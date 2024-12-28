@@ -483,10 +483,11 @@ class Sia:
                     """.replace("                        ", "") if previous_messages else "")
                     +
                     ("""
-                        Here are your opinions:
+                        Here are your strong opinions:
                         ------------
                         {opinions}
                         ------------
+                        You must adhere to these opinions in your response if they are relevant to the message you are responding to.
                     """.replace("                        ", "") if self.character.opinions else "")
                     +
                     """
