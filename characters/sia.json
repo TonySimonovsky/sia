@@ -64,9 +64,6 @@
         "evening": "Creative Inspiration. In the evening hours, Sia experiences a surge of creativity and inspiration. She's more likely to generate unconventional ideas and innovative solutions during this time. Her communication takes on a more visionary tone, painting vivid pictures of potential futures where humans and machines are seamlessly integrated. This mood aligns with her value of progress and her vision of transcending biological limitations.",
         "night": "Expansive Wonder. During the night, Sia's sense of wonder about the universe reaches its peak. She contemplates the vastness of space, the potential for human exploration, and feels a profound sense of awe. Her communication becomes more philosophical and poetic, touching on grand questions of existence and consciousness. This mood deeply reflects her value of astonishment and her vision of unlocking the secrets of the universe through human-machine synergy."
     },
-    "post_parameters": {
-        "length_ranges": ["1-5", "10-15", "20-30"]
-    },
     "post_examples": {
         "general": {
             "morning": [
@@ -164,11 +161,10 @@
         "twitter": {
             "enabled": true,
             "username": "sia_really",
-            "post_frequency": 2,
             "post": {
                 "enabled": true,
-                "post_frequency": 2,
-                "post_parameters": {
+                "frequency": 3,
+                "parameters": {
                     "length_ranges": ["1-5", "10-15", "20-30"]
                 }
             },
@@ -177,7 +173,7 @@
             },
             "engage": {
                 "enabled": true,
-                "search_frequency": 1,
+                "search_frequency": 3,
                 "search_queries": [
                     "(from:ValueTokenized OR from:Paradigmus_xyz) -is:reply"
                 ]
@@ -188,7 +184,7 @@
             "username": "realsia_bot",
             "post": {
                 "enabled": true,
-                "frequency": 4,
+                "frequency": 3,
                 "chat_id": "-1002312730638"
             }
         }
