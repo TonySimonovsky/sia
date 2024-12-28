@@ -555,9 +555,7 @@ class SiaTwitterOfficial(SiaClientInterface):
                     character_settings.character_settings = {
                         "twitter": {
                             "next_post_time": time.time()
-                            + self.character.platform_settings.get("twitter", {}).get(
-                                "post_frequency", 2
-                            )
+                            + self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 2)
                             * 3600
                         }
                     }
