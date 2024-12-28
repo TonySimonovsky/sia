@@ -220,7 +220,7 @@ class Sia:
             ],
             "platform": platform,
             "length_range": random.choice(
-                self.character.post_parameters.get("length_ranges")
+                self.character.platform_settings.get(platform, {}).get("post", {}).get("parameters", {}).get("length_ranges", ["1-5", "10-15", "20-30"])
             ),
             "plugin_prompt": plugin_prompt
         }
@@ -294,7 +294,6 @@ class Sia:
             content=post_content,
             platform=platform,
             author=author,
-            # character=character,
             conversation_id=conversation_id
         )
 
