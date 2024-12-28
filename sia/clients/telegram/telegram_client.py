@@ -130,21 +130,21 @@ class SiaTelegram(SiaClientInterface):
                 f"[@{context.bot.username}] No reply to message from {username} (ID: {user_id}) in chat '{chat_title}' (ID: {chat_id}, t.me/{chat_username}), message ID {update.message.message_id}: {message_text}"
             )
 
-    def is_time_to_post(self):
-        platform_settings = self.sia.character.platform_settings["telegram"]
+    # def is_time_to_post(self):
+    #     platform_settings = self.sia.character.platform_settings["telegram"]
 
-        log_message(
-            self.logger,
-            "info",
-            self,
-            f"Character settings: {
-                platform_settings['post_frequency']}",
-        )
+    #     log_message(
+    #         self.logger,
+    #         "info",
+    #         self,
+    #         f"Character settings: {
+    #             platform_settings['post_frequency']}",
+    #     )
 
-        return True
+    #     return True
 
     async def periodic_post(self):
-        self.is_time_to_post()
+        # self.is_time_to_post()
         while True:
 
             if self.chat_id:
@@ -155,8 +155,7 @@ class SiaTelegram(SiaClientInterface):
 
                 post, media = self.sia.generate_post(
                     platform=self.platform_name,
-                    author=bot_username,
-                    # character=self.sia.character.name,
+                    author=bot_username
                 )
 
                 try:
@@ -191,7 +190,7 @@ class SiaTelegram(SiaClientInterface):
                     print(f"Failed to send post: {e}")
             post_frequency_hours = self.sia.character.platform_settings.get(
                 "telegram", {}
-            ).get("post_frequency", 2)
+            ).get("post", {}).get("frequency", 2)
             # Wait for the specified number of hours
             await asyncio.sleep(post_frequency_hours * 3600)
 

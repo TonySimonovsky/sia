@@ -135,32 +135,70 @@ class SiaTelegram(SiaClientInterface):
         media: List[str] = None,
         in_reply_to_message_id: str = None,
     ) -> str:
+        """
+        Publish a message to Telegram with optional media
         
+        Args:
+            message (SiaMessageGeneratedSchema): Message to send
+            media (List[str], optional): List of paths to media files
+            in_reply_to_message_id (str, optional): Message ID to reply to
+            
+        Returns:
+            str: ID of the sent message
+        """
+
+        from aiogram.types import InputMediaPhoto, FSInputFile
+
         try:
-            # Send text message or media
-            if media:
-                from aiogram.types import FSInputFile
-                media_group = [InputMediaPhoto(media=FSInputFile(file)) for file in media]
-                # media_group = [InputMediaPhoto(media=open(file, 'rb')) for file in media]
-                sent_messages = await self.bot.send_media_group(
-                    chat_id=int(message.conversation_id),
-                    media=media_group,
-                    reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
-                )
-                return str(sent_messages[0].message_id)
-            else:
+            if not media:
+                # Text only message
                 sent_message = await self.bot.send_message(
                     chat_id=int(message.conversation_id),
                     text=message.content,
-                    reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
+                    reply_to_message_id=in_reply_to_message_id
                 )
-                return str(sent_message.message_id)
+            else:
+                # Message with media
+                if len(media) == 1:
+                    # Single image with caption
+                    photo = FSInputFile(media[0])
+                    sent_message = await self.bot.send_photo(
+                        chat_id=int(message.conversation_id),
+                        photo=photo,
+                        caption=message.content,
+                        reply_to_message_id=in_reply_to_message_id
+                    )
+                else:
+                    # Multiple images with caption on first image
+                    media_group = [
+                        InputMediaPhoto(
+                            media=FSInputFile(media[0]),
+                            caption=message.content
+                        )
+                    ]
+                    # Add remaining images without captions
+                    for media_file in media[1:]:
+                        media_group.append(
+                            InputMediaPhoto(media=FSInputFile(media_file))
+                        )
+                    sent_message = await self.bot.send_media_group(
+                        chat_id=int(message.conversation_id),
+                        media=media_group,
+                        reply_to_message_id=in_reply_to_message_id
+                    )
+                    # For media groups, we get a list of messages
+                    sent_message = sent_message[0]
+
+            return str(sent_message.message_id)
 
         except Exception as e:
             log_message(
-                self.logger, "error", self, f"Failed to send message: {e}"
+                self.logger,
+                "error", 
+                self,
+                f"Error publishing message: {e}"
             )
-            return None
+            raise
 
     async def _handle_group_message(self, message: TgMessage):
         """Handle incoming messages"""
@@ -215,11 +253,11 @@ class SiaTelegram(SiaClientInterface):
 
     async def post(self):
         """Implementation of periodic posting"""
+        
         if not self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("enabled", False):
             return
         
         chat_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("chat_id", "")
-
 
         # check if it is
         #   time to post
@@ -250,19 +288,22 @@ class SiaTelegram(SiaClientInterface):
             post, media = self.sia.generate_post(
                 platform="telegram",
                 author=self.sia.character.platform_settings.get("telegram", {}).get("username", ""),
-                # character=self.sia.character.name,
                 conversation_id=chat_id
             )
 
-            if post or media:
-                message_id = await self.publish_message(message=post, media=media)
-                if message_id:
-                    self.sia.memory.add_message(
-                        message_id=f"{chat_id}-{message_id}", 
-                        message=post, 
-                        message_type="post",
-                        character=self.sia.character.name
-                    )
+            try:
+                if post or media:
+                    log_message(self.logger, "info", self, f"Tryig to publish message: {post} with media: {media}")
+                    message_id = await self.publish_message(message=post, media=media)
+                    if message_id:
+                        self.sia.memory.add_message(
+                            message_id=f"{chat_id}-{message_id}", 
+                            message=post, 
+                            message_type="post",
+                            character=self.sia.character.name
+                        )
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error publishing message: {e}")
                     
     async def run(self):
         """Main loop to run the Telegram bot"""
