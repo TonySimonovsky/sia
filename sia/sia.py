@@ -456,63 +456,69 @@ class Sia:
                 (
                     "system",
                     """
-                {you_are}
+                        {you_are}
 
-                {communication_requirements}
+                        {communication_requirements}
 
-                Your goal is to respond to the message on {platform} provided below in the conversation provided below.
+                        Your goal is to respond to the message on {platform} provided below in the conversation provided below.
 
-                Message to response:
-                {message}
+                        Message to response:
+                        {message}
 
-                Conversation:
-                ------------
-                {conversation}
-                ------------
+                        Conversation:
+                        ------------
+                        {conversation}
+                        ------------
 
-                Your response must be unique and creative.  It must also be drastically different from your previous messages.
+                        Your response must be unique and creative.  It must also be drastically different from your previous messages.
 
-                It must still be consistent with your personality, mood, core objective and means for achieving it.
-                """
-                    + (
-                        """
-                Some of your previous messages:
-                ------------
-                {previous_messages}
-                ------------
+                        It must still be consistent with your personality, mood, core objective and means for achieving it.
+                        """.replace("                        ", "")
+                    +
+                    ("""
+                        Some of your previous messages:
+                        ------------
+                        {previous_messages}
+                        ------------
+                    """.replace("                        ", "") if previous_messages else "")
+                    +
+                    ("""
+                        Here are your opinions:
+                        ------------
+                        {opinions}
+                        ------------
+                    """.replace("                        ", "") if self.character.opinions else "")
+                    +
+                    """
+                        Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
+                        
+                        Important instructions:
+                        {instructions}
 
-                Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
-                
-                Important instructions:
-                {instructions}
-
-                Examples:
-                - if one of your previous messages starts with a question, your new response must not start with a question.
-                - if one of your previous messages continues with an assessment of the situation, your new response must not continue with an assessment of the situation.
-                - if one of your previous messages ends with a question, your new response must not end with a question.
-                - if your previous message is short, your new response must be way longer and vice versa.
-                """
-                        if previous_messages
-                        else ""
-                    ),
+                        Examples:
+                        - if one of your previous messages starts with a question, your new response must not start with a question.
+                        - if one of your previous messages continues with an assessment of the situation, your new response must not continue with an assessment of the situation.
+                        - if one of your previous messages ends with a question, your new response must not end with a question.
+                        - if your previous message is short, your new response must be way longer and vice versa.
+                    """.replace("                        ", "")
                 ),
                 (
                     "user",
                     """
-                Generate your response to the message.
+                        Generate your response to the message.
 
-                Your response length must be fewer than 30 words.
+                        Your response length must be fewer than 30 words.
 
-                Your response must be unique and creative.
+                        Your response must be unique and creative.
 
-                It must also be drastically different from your previous messages in all ways, shapes or forms.
+                        It must also be drastically different from your previous messages in all ways, shapes or forms.
 
-                Your response must still be consistent with your personality, mood, core objective and means for achieving it.
+                        Your response must still be consistent with your personality, mood, core objective and means for achieving it.
 
-                Your response must be natural continuation of the conversation or the message you are responding to. It must add some value to the conversation.
+                        Your response must be natural continuation of the conversation or the message you are responding to. It must add some value to the conversation.
 
-                Generate your response to the message following the rules and instructions provided above.
-            """,
+                        Generate your response to the message following the rules and instructions provided above.
+                    """.replace("                        ", ""),
                 ),
             ]
         )
@@ -523,6 +529,7 @@ class Sia:
                 "communication_requirements"
             ),
             "instructions": self.character.instructions,
+            "opinions": self.character.opinions,
             "platform": platform,
             "message": message_to_respond_str,
             "conversation": conversation_str,

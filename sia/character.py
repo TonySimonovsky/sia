@@ -17,6 +17,7 @@ class SiaCharacter:
         lore=None,
         core_objective=None,
         means_for_achieving_core_objective=None,
+        opinions=None,
         instructions=None,
         bio=None,
         traits=None,
@@ -49,6 +50,7 @@ class SiaCharacter:
             self.core_objective = core_objective
             self.means_for_achieving_core_objective = means_for_achieving_core_objective
             self.instructions = instructions
+            self.opinions = opinions
             self.bio = bio
             self.traits = traits
             self.moods = moods
@@ -128,6 +130,7 @@ class SiaCharacter:
         self.means_for_achieving_core_objective = data.get(
             "means_for_achieving_core_objective"
         )  # required
+        self.opinions = data.get("opinions")  # optional
         self.instructions = data.get("instructions")  # optional
         self.bio = data.get("bio")  # optional
         self.traits = data.get("traits")  # optional
