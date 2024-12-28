@@ -23,7 +23,6 @@ class SiaCharacter:
         traits=None,
         moods=None,
         post_examples={},
-        post_parameters={},
         message_examples={},
         topics=None,
         plugins_settings={},
@@ -55,7 +54,6 @@ class SiaCharacter:
             self.traits = traits
             self.moods = moods
             self.post_examples = post_examples
-            self.post_parameters = post_parameters
             self.message_examples = message_examples
             self.topics = topics
             self.plugins_settings = plugins_settings
@@ -136,9 +134,6 @@ class SiaCharacter:
         self.traits = data.get("traits")  # optional
         self.moods = data.get("moods")  # optional
         self.post_examples = data.get("post_examples")  # optional
-        self.post_parameters = data.get(
-            "post_parameters", {"length_ranges": ["1-5", "20-30", "50-100"]}
-        )  # optional
         self.message_examples = data.get("message_examples")  # optional
         self.topics = data.get("topics")  # optional
         self.plugins_settings = data.get("plugins", {})  # optional
@@ -177,8 +172,6 @@ class SiaCharacter:
             examples_to_return = all_examples[:random_pick]
         else:
             examples_to_return = all_examples
-
-        log_message(self.logger, "info", self, f"Post examples: {examples_to_return}")
 
         return examples_to_return
 
