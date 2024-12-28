@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import json
 import os
 import random
 import threading
@@ -14,7 +13,6 @@ from langchain_openai import ChatOpenAI
 
 from plugins.imgflip_meme_generator import ImgflipMemeGenerator
 from sia.character import SiaCharacter
-# from sia.clients.telegram.telegram_client import SiaTelegram
 from sia.clients.telegram.telegram_client_aiogram import SiaTelegram
 from sia.clients.twitter.twitter_official_api_client import SiaTwitterOfficial
 from sia.memory.memory import SiaMemory
@@ -72,16 +70,6 @@ class Sia:
         self.knowledge_modules = [kmc(sia=self) for kmc in knowledge_module_classes]
         
         self.run_all_modules()
-        
-    #     self.abilities = {}
-    #     self.collect_abilities()
-        
-    # def collect_abilities(self):
-    #     """Collect abilities from all clients and store them in Sia's abilities property"""
-    #     self.abilities = {}
-
-    #     if self.telegram:
-    #         self.abilities.update(self.telegram.abilities)
 
 
     def run_all_modules(self):
@@ -234,8 +222,7 @@ class Sia:
             "length_range": random.choice(
                 self.character.post_parameters.get("length_ranges")
             ),
-            "plugin_prompt": plugin_prompt,
-            # "formatting": self.character.post_parameters.get("formatting")
+            "plugin_prompt": plugin_prompt
         }
 
         try:
@@ -537,16 +524,6 @@ class Sia:
             "previous_messages": previous_messages,
         }
 
-        # log_message(
-        #     self.logger,
-        #     "info",
-        #     self,
-        #     f"ai_input: {
-        #         json.dumps(
-        #             ai_input,
-        #             indent=4)}",
-        # )
-
         try:
             llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.0)
 
@@ -575,7 +552,6 @@ class Sia:
             author=self.character.platform_settings.get(message.platform, {}).get(
                 "username", self.character.name
             ),
-            # character=self.character.name,
             response_to=message.id,
             conversation_id=message.conversation_id,
         )
@@ -588,41 +564,10 @@ class Sia:
 
         return generated_response_schema
 
-    # def publish_post(
-    #     self, client: SiaClientInterface, post: SiaMessageGeneratedSchema, media: dict = []
-    # ) -> str:
-    #     tweet_id = client.publish_post(post, media)
-    #     return tweet_id
-
-
-    # def run_telegram(self):
-    #     if self.telegram:
-    #         # Create new event loop for this thread
-    #         loop = asyncio.new_event_loop()
-    #         asyncio.set_event_loop(loop)
-    #         try:
-    #             # Run the telegram client
-    #             loop.run_until_complete(self.telegram.run())
-    #         finally:
-    #             loop.close()
-
-    # def run_twitter(self):
-    #     if self.twitter:
-    #         # Create new event loop for this thread
-    #         loop = asyncio.new_event_loop()
-    #         asyncio.set_event_loop(loop)
-    #         try:
-    #             # Run the twitter client
-    #             loop.run_until_complete(self.twitter.run())
-    #         finally:
-    #             loop.close()
-
 
     def run(self):
         """Run all clients concurrently using threads"""
         threads = []
-        
-        # print(f"Abilities: {self.abilities}")
         
         # Add Telegram thread if enabled
         if self.telegram:

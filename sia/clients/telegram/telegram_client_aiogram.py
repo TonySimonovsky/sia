@@ -1,7 +1,5 @@
-import random
-import time
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from datetime import datetime, timedelta
+from typing import List
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
@@ -9,13 +7,11 @@ from aiogram.types import Message as TgMessage, InputMediaPhoto
 from aiogram.client.default import DefaultBotProperties
 from aiogram.exceptions import TelegramConflictError
 
-from pydantic import BaseModel
-
 import asyncio
 
 from sia.character import SiaCharacter
 from sia.memory.memory import SiaMemory
-from sia.memory.schemas import SiaMessageGeneratedSchema, SiaMessageSchema
+from sia.memory.schemas import SiaMessageGeneratedSchema
 from sia.clients.client_interface import SiaClientInterface
 from utils.logging_utils import enable_logging, log_message, setup_logging
 
@@ -127,7 +123,6 @@ class SiaTelegram(SiaClientInterface):
             content=message.text,
             platform="telegram",
             author=message.from_user.username or str(message.from_user.id),
-            # character=self.sia.character.name,
             response_to=str(message.reply_to_message.message_id) if message.reply_to_message else None,
             wen_posted=message.date,
             flagged=0,
@@ -153,12 +148,6 @@ class SiaTelegram(SiaClientInterface):
                     reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
                 )
                 return str(sent_messages[0].message_id)
-                # sent_messages = await self.bot.send_media_group(
-                #     chat_id=int(message.conversation_id),
-                #     media=media_group,
-                #     reply_to_message_id=int(in_reply_to_message_id.split("-")[-1]) if in_reply_to_message_id else None
-                # )
-                # return str(sent_messages[0].message_id)
             else:
                 sent_message = await self.bot.send_message(
                     chat_id=int(message.conversation_id),
@@ -197,17 +186,6 @@ class SiaTelegram(SiaClientInterface):
             )
             log_message(self.logger, "info", self, f"Stored new message: {stored_message}")
 
-        # try:
-            
-            # # Save message to database
-            # stored_message = self.sia.memory.add_message(
-            #     message_id=message_id,
-            #     message=sia_message,
-            #     character=self.sia.character.name
-            # )
-            
-            # log_message(self.logger, "info", self, f"Stored message: {stored_message}")
-
         should_respond = False
 
         # Check for direct mentions
@@ -234,9 +212,6 @@ class SiaTelegram(SiaClientInterface):
                 )
         else:
             log_message(self.logger, "info", self, f"No mention or reply to bot found: {message.text.replace('\n', ' ')}")
-
-        # except Exception as e:
-        #     log_message(self.logger, "error", self, f"Error handling message: {e}")
 
     async def post(self):
         """Implementation of periodic posting"""
@@ -289,13 +264,6 @@ class SiaTelegram(SiaClientInterface):
                         character=self.sia.character.name
                     )
                     
-                    # # Update next post time
-                    # self.sia.character.platform_settings["telegram"] = {
-                    #     "next_post_time": time.time() + 
-                    #         self.sia.character.platform_settings.get("telegram", {}).get("post_frequency", 2) * 3600
-                    # }
-                    # self.sia.memory.update_character_settings(character_settings)
-
     async def run(self):
         """Main loop to run the Telegram bot"""
         if not self.sia.character.platform_settings.get("telegram", {}).get("enabled", True):
