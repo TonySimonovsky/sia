@@ -138,9 +138,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             self.logger,
             "info",
             self,
-            f"Getting last retrieved reply id for {
-                self.character.twitter_username} (character: {
-                self.character.name})",
+            f"Getting last retrieved reply id for {self.character.twitter_username} (character: {self.character.name})",
         )
         replies = self.memory.get_messages(
             platform="twitter",
@@ -149,6 +147,8 @@ class SiaTwitterOfficial(SiaClientInterface):
         )
         if replies:
             max_reply = max(replies, key=lambda reply: reply.id)
+            if max_reply.wen_posted < datetime.now() - timedelta(weeks=1):
+                return None
             return None if max_reply.id == "None" else max_reply.id
 
     def get_conversation(self, conversation_id: str) -> list[SiaMessageSchema]:
@@ -519,29 +519,47 @@ class SiaTwitterOfficial(SiaClientInterface):
 
     def post(self):
 
-        character_settings = self.memory.get_character_settings()
+        # character_settings = self.memory.get_character_settings()
 
-        next_post_time = character_settings.character_settings.get("twitter", {}).get(
-            "next_post_time", 0
-        )
-        next_post_datetime = (
-            datetime.fromtimestamp(next_post_time).strftime("%Y-%m-%d %H:%M:%S")
-            if next_post_time
-            else "N/A"
-        )
-        now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        next_post_time_seconds = next_post_time - time.time()
-        next_post_hours = next_post_time_seconds // 3600
-        next_post_minutes = (next_post_time_seconds % 3600) // 60
-        log_message(self.logger, "info", self, f"Current time: {now_time}, next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
+        # next_post_time = character_settings.character_settings.get("twitter", {}).get(
+        #     "next_post_time", 0
+        # )
+        # next_post_datetime = (
+        #     datetime.fromtimestamp(next_post_time).strftime("%Y-%m-%d %H:%M:%S")
+        #     if next_post_time
+        #     else "N/A"
+        # )
+        # now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # next_post_time_seconds = next_post_time - time.time()
+        # next_post_hours = next_post_time_seconds // 3600
+        # next_post_minutes = (next_post_time_seconds % 3600) // 60
+        # log_message(self.logger, "info", self, f"Current time: {now_time}, next post time: {next_post_datetime} (posting in {next_post_hours}h {next_post_minutes}m)")
 
+        next_post_time = None
+        
         if (
             self.character.platform_settings.get("twitter", {})
             .get("post", {})
             .get("enabled", False)
-            and time.time() > next_post_time
         ):
+            post_frequency = self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 0)
+            next_post_time = time.time() + post_frequency * 3600
+            latest_post = self.sia.memory.get_messages(
+                platform="twitter",
+                character=self.character.name,
+                author=self.character.platform_settings.get("twitter", {}).get("username", ""),
+                is_post=True,
+                sort_by="wen_posted",
+                sort_order="desc"
+            )
+            latest_post = latest_post[0] if latest_post else None
+            next_post_time = latest_post.wen_posted + timedelta(hours=24/post_frequency) if latest_post else datetime.now()-timedelta(seconds=10)
+            log_message(self.logger, "info", self, f"Post frequency: {post_frequency}")
+            log_message(self.logger, "info", self, f"Latest post: {latest_post}")
+            log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(): {datetime.now()}")
 
+
+        if next_post_time and datetime.now() > next_post_time:
             post, media = self.sia.generate_post(
                 platform="twitter",
                 author=self.character.twitter_username
@@ -552,14 +570,14 @@ class SiaTwitterOfficial(SiaClientInterface):
                 if tweet_id and tweet_id is not Forbidden:
                     self.memory.add_message(message_id=tweet_id, message=post, message_type="post")
 
-                    character_settings.character_settings = {
-                        "twitter": {
-                            "next_post_time": time.time()
-                            + self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 2)
-                            * 3600
-                        }
-                    }
-                    self.memory.update_character_settings(character_settings)
+                    # character_settings.character_settings = {
+                    #     "twitter": {
+                    #         "next_post_time": time.time()
+                    #         + self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 2)
+                    #         * 3600
+                    #     }
+                    # }
+                    # self.memory.update_character_settings(character_settings)
             else:
                 log_message(self.logger, "info", self, "No post or media generated.")
 
