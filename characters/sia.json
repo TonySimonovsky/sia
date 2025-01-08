@@ -163,7 +163,7 @@
             "username": "sia_really",
             "post": {
                 "enabled": true,
-                "frequency": 3,
+                "frequency": 8,
                 "parameters": {
                     "length_ranges": ["1-5", "10-15", "20-30"]
                 }
@@ -173,7 +173,7 @@
             },
             "engage": {
                 "enabled": true,
-                "search_frequency": 3,
+                "search_frequency": 6,
                 "search_queries": [
                     "(from:ValueTokenized OR from:Paradigmus_xyz) -is:reply"
                 ]
@@ -184,7 +184,7 @@
             "username": "realsia_bot",
             "post": {
                 "enabled": true,
-                "frequency": 3,
+                "frequency": 12,
                 "chat_id": "-1002312730638"
             }
         }
