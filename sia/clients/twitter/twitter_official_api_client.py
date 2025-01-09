@@ -147,7 +147,7 @@ class SiaTwitterOfficial(SiaClientInterface):
         )
         if replies:
             max_reply = max(replies, key=lambda reply: reply.id)
-            if max_reply.wen_posted < datetime.now() - timedelta(weeks=1):
+            if max_reply.wen_posted < datetime.now(timezone.utc) - timedelta(weeks=1):
                 return None
             return None if max_reply.id == "None" else max_reply.id
 
@@ -613,7 +613,7 @@ class SiaTwitterOfficial(SiaClientInterface):
                 [
                     r
                     for r in responses_sent
-                    if r.wen_posted > datetime.now() - timedelta(hours=1)
+                    if r.wen_posted > datetime.now(timezone.utc) - timedelta(hours=1)
                 ]
             )
             max_responses_an_hour = self.character.responding.get(
@@ -738,7 +738,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             next_time_to_engage = latest_message.wen_posted + timedelta(
                 hours=search_frequency
             )
-            is_time_to_engage = datetime.now() > next_time_to_engage
+            is_time_to_engage = datetime.now(timezone.utc) > next_time_to_engage
             if not is_time_to_engage and not self.testing:
                 log_message(
                     self.logger,
