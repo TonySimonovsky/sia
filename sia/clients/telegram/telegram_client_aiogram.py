@@ -278,8 +278,8 @@ class SiaTelegram(SiaClientInterface):
         )
 
         latest_post = latest_post[0] if latest_post else None
-        next_post_time = latest_post.wen_posted + timedelta(hours=post_frequency) if latest_post else datetime.now(timezone.utc)-timedelta(seconds=10)
-        log_message(self.logger, "info", self, f"Post frequency: {post_frequency}")
+        next_post_time = latest_post.wen_posted + timedelta(hours=24/post_frequency) if latest_post else datetime.now(timezone.utc)-timedelta(seconds=10)
+        log_message(self.logger, "info", self, f"Post frequency: {post_frequency} (every {24/post_frequency} hours)")
         log_message(self.logger, "info", self, f"Latest post: {latest_post}")
         log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(timezone.utc): {datetime.now(timezone.utc)}")
         
