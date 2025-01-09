@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, String, ForeignKey
@@ -19,7 +19,7 @@ class SiaMessageModel(Base):
     content = Column(String, nullable=False)
     response_to = Column(String)
     message_type = Column(String, nullable=True)
-    wen_posted = Column(DateTime(timezone=True), default=lambda: datetime.now())
+    wen_posted = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     original_data = Column(JSON)
     flagged = Column(Boolean, nullable=True, default=False)
     message_metadata = Column(JSON)

@@ -559,7 +559,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(timezone.utc): {datetime.now(timezone.utc)}")
 
 
-        if next_post_time and datetime.now() > next_post_time:
+        if next_post_time and datetime.now(timezone.utc) > next_post_time:
             post, media = self.sia.generate_post(
                 platform="twitter",
                 author=self.character.twitter_username
