@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from aiogram import Bot, Dispatcher, F
@@ -278,12 +278,12 @@ class SiaTelegram(SiaClientInterface):
         )
 
         latest_post = latest_post[0] if latest_post else None
-        next_post_time = latest_post.wen_posted + timedelta(hours=post_frequency) if latest_post else datetime.now()-timedelta(seconds=10)
+        next_post_time = latest_post.wen_posted + timedelta(hours=post_frequency) if latest_post else datetime.now(timezone.utc)-timedelta(seconds=10)
         log_message(self.logger, "info", self, f"Post frequency: {post_frequency}")
         log_message(self.logger, "info", self, f"Latest post: {latest_post}")
-        log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(): {datetime.now()}")
+        log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(timezone.utc): {datetime.now(timezone.utc)}")
         
-        if datetime.now() > next_post_time:
+        if datetime.now(timezone.utc) > next_post_time:
             log_message(self.logger, "info", self, "It's time to post!")
             post, media = self.sia.generate_post(
                 platform="telegram",
@@ -293,7 +293,7 @@ class SiaTelegram(SiaClientInterface):
 
             try:
                 if post or media:
-                    log_message(self.logger, "info", self, f"Tryig to publish message: {post} with media: {media}")
+                    log_message(self.logger, "info", self, f"Trying to publish message: {post} with media: {media}")
                     message_id = await self.publish_message(message=post, media=media)
                     if message_id:
                         self.sia.memory.add_message(
