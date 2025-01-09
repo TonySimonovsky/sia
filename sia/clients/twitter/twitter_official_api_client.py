@@ -592,6 +592,8 @@ class SiaTwitterOfficial(SiaClientInterface):
             #   where I'm tagged
 
             since_id = self.get_last_retrieved_reply_id()
+            log_message(self.logger, "info", self, f"Since id: {since_id}")
+            
             replies_search_inputs = {
                 "query": f"to:{self.character.twitter_username} OR @{self.character.twitter_username}",
                 "client": self.client,
@@ -909,17 +911,26 @@ class SiaTwitterOfficial(SiaClientInterface):
 
             # posting
             #   new tweet
-            self.post()
+            try:
+                self.post()
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error posting tweet: {e}")
 
 
             # replying
             #   to mentions
-            self.reply()
+            try:
+                self.reply()
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error replying to mentions: {e}")
 
 
             # searching for and replying
             #   to tweets from other users
-            self.engage()
+            try:
+                self.engage()
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error engaging with tweets: {e}")
 
 
             time.sleep(random.randint(70, 90))
