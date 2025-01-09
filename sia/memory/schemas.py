@@ -1,5 +1,5 @@
 import textwrap
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -23,7 +23,7 @@ class SiaMessageGeneratedSchema(BaseModel):
 class SiaMessageSchema(SiaMessageGeneratedSchema):
     id: str
     message_type: Optional[str] = Field(default="post")  # Can be "post" or "reply"
-    wen_posted: datetime = Field(default_factory=lambda: datetime.now())
+    wen_posted: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     original_data: Optional[dict] = None
     
     characters: list['MessageCharacterSchema'] = Field(default_factory=list)
@@ -76,7 +76,7 @@ class SiaMessageSchema(SiaMessageGeneratedSchema):
 class MessageCharacterSchema(BaseModel):
     message_id: str
     character_name: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
 
     class Config:
         from_attributes = True
