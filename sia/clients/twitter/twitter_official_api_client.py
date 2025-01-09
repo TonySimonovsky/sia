@@ -542,7 +542,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             .get("post", {})
             .get("enabled", False)
         ):
-            post_frequency = self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 0)
+            post_frequency = self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 1)
             next_post_time = datetime.now(timezone.utc) + timedelta(hours=24/post_frequency)
             latest_post = self.sia.memory.get_messages(
                 platform="twitter",
