@@ -543,7 +543,7 @@ class SiaTwitterOfficial(SiaClientInterface):
             .get("enabled", False)
         ):
             post_frequency = self.character.platform_settings.get("twitter", {}).get("post", {}).get("frequency", 0)
-            next_post_time = time.time() + post_frequency * 3600
+            next_post_time = datetime.now(timezone.utc) + timedelta(hours=24/post_frequency)
             latest_post = self.sia.memory.get_messages(
                 platform="twitter",
                 character=self.character.name,
@@ -553,10 +553,10 @@ class SiaTwitterOfficial(SiaClientInterface):
                 sort_order="desc"
             )
             latest_post = latest_post[0] if latest_post else None
-            next_post_time = latest_post.wen_posted + timedelta(hours=24/post_frequency) if latest_post else datetime.now()-timedelta(seconds=10)
+            next_post_time = latest_post.wen_posted + timedelta(hours=24/post_frequency) if latest_post else datetime.now(timezone.utc)-timedelta(seconds=10)
             log_message(self.logger, "info", self, f"Post frequency: {post_frequency}")
             log_message(self.logger, "info", self, f"Latest post: {latest_post}")
-            log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(): {datetime.now()}")
+            log_message(self.logger, "info", self, f"Next post time: {next_post_time}, datetime.now(timezone.utc): {datetime.now(timezone.utc)}")
 
 
         if next_post_time and datetime.now() > next_post_time:
