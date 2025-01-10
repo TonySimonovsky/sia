@@ -58,6 +58,22 @@ class SiaTelegram(SiaClientInterface):
         # Register message handler
         self.setup_handlers()
 
+
+    def telegram_message_to_sia_message(
+        self, message: TgMessage
+    ) -> SiaMessageGeneratedSchema:
+        return SiaMessageGeneratedSchema(
+            conversation_id=str(message.chat.id),
+            content=message.text,
+            platform="telegram",
+            author=message.from_user.username or str(message.from_user.id),
+            response_to=str(message.reply_to_message.message_id) if message.reply_to_message else None,
+            wen_posted=message.date,
+            flagged=0,
+            metadata=None,
+        )
+
+
     def setup_handlers(self):
         """Set up message handlers"""
         print("Setting up message handlers...")  # Debug print
@@ -79,7 +95,6 @@ class SiaTelegram(SiaClientInterface):
                 return
             log_message(self.logger, "info", self, f"Private message received: {message.text.replace('\n', ' ')}")  # Debug print
             await self._handle_private_message(message)
-
 
     async def handle_telegram_conflict(self, bot: Bot, retries=3):
         """Handle Telegram API conflicts with exponential backoff"""
@@ -126,21 +141,6 @@ class SiaTelegram(SiaClientInterface):
         
         raise Exception(f"Could not resolve Telegram conflict after {retries} attempts")
         
-    def telegram_message_to_sia_message(
-        self, message: TgMessage
-    ) -> SiaMessageGeneratedSchema:
-        return SiaMessageGeneratedSchema(
-            conversation_id=str(message.chat.id),
-            content=message.text,
-            platform="telegram",
-            author=message.from_user.username or str(message.from_user.id),
-            response_to=str(message.reply_to_message.message_id) if message.reply_to_message else None,
-            wen_posted=message.date,
-            flagged=0,
-            metadata=None,
-        )
-
-
     async def _handle_private_message(self, message: TgMessage):
         """Handle incoming private messages"""
 
@@ -190,7 +190,6 @@ class SiaTelegram(SiaClientInterface):
                     message_type="reply",
                     character=self.sia.character.name
                 )
-
 
     async def _handle_group_message(self, message: TgMessage):
         """Handle incoming messages"""
@@ -323,6 +322,29 @@ class SiaTelegram(SiaClientInterface):
         
         chat_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("chat_id", "")
 
+
+        # If testing is on, post to test chat id
+        if self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("testing", False):
+            testing_chat_id = self.sia.character.platform_settings.get("telegram", {}).get("post", {}).get("test_chat_id", "")
+            if testing_chat_id:
+                
+                log_message(self.logger, "info", self, f"Posting to test chat id: {testing_chat_id}")
+                
+                post, media = self.sia.generate_post(
+                    platform="telegram",
+                    author=self.sia.character.platform_settings.get("telegram", {}).get("username", ""),
+                    conversation_id=testing_chat_id
+                )
+                message_id = await self.publish_message(message=post, media=media)
+                if message_id:
+                    self.sia.memory.add_message(
+                        message_id=f"{chat_id}-{message_id}", 
+                        message=post, 
+                        message_type="post",
+                        character=self.sia.character.name
+                    )
+
+
         # check if it is
         #   time to post
 
@@ -368,6 +390,7 @@ class SiaTelegram(SiaClientInterface):
                         )
             except Exception as e:
                 log_message(self.logger, "error", self, f"Error publishing message: {e}")
+
                     
     async def run(self):
         """Main loop to run the Telegram bot"""
