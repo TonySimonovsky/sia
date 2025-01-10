@@ -62,13 +62,24 @@ class SiaTelegram(SiaClientInterface):
         """Set up message handlers"""
         print("Setting up message handlers...")  # Debug print
 
+        # Handler for group and supergroup messages
         @self.dp.message(F.chat.type.in_({"group", "supergroup"}))
-        async def message_handler(message: TgMessage):
+        async def group_message_handler(message: TgMessage):
             if not message.text:
-                log_message(self.logger, "info", self, f"Message is empty")
+                log_message(self.logger, "info", self, "Message is empty")
                 return
             log_message(self.logger, "info", self, f"Handler triggered! Message: {message.text.replace('\n', ' ')}")  # Debug print
             await self._handle_group_message(message)
+
+        # Handler for private chat messages
+        @self.dp.message(F.chat.type == "private")
+        async def private_message_handler(message: TgMessage):
+            if not message.text:
+                log_message(self.logger, "info", self, "Private message is empty")
+                return
+            log_message(self.logger, "info", self, f"Private message received: {message.text.replace('\n', ' ')}")  # Debug print
+            await self._handle_private_message(message)
+
 
     async def handle_telegram_conflict(self, bot: Bot, retries=3):
         """Handle Telegram API conflicts with exponential backoff"""
@@ -128,6 +139,110 @@ class SiaTelegram(SiaClientInterface):
             flagged=0,
             metadata=None,
         )
+
+
+    async def _handle_private_message(self, message: TgMessage):
+        """Handle incoming private messages"""
+
+        chat_id = message.chat.id
+
+        log_message(self.logger, "info", self, f"Processing private message in chat id {chat_id}: {message.text.replace('\n', ' ')}")
+
+        # # Example: Echo the message back to the user
+        # try:
+        #     await self.bot.send_message(
+        #         chat_id=message.chat.id,
+        #         text=f"You said: {message.text}"
+        #     )
+        # except Exception as e:
+        #     log_message(self.logger, "error", self, f"Error handling private message: {e}")
+
+
+
+        # Convert Telegram message to Sia message format
+        sia_message = self.telegram_message_to_sia_message(message)
+        message_id = f"{chat_id}-{str(message.message_id)}"
+        
+        # Check if the message already exists in the database
+        existing_message = self.sia.memory.get_messages(id=message_id)
+        if existing_message:
+            log_message(self.logger, "info", self, f"Message already exists in database: {existing_message}")
+            stored_message = existing_message[0]
+        else:
+            # Save message to database
+            stored_message = self.sia.memory.add_message(
+                message_id=message_id,
+                message=sia_message,
+                character=self.sia.character.name
+            )
+            log_message(self.logger, "info", self, f"Stored new message: {stored_message}")
+
+        if self.sia.character.responding.get("enabled", True):
+            response = self.sia.generate_response(stored_message)
+            if response:
+                message_id = await self.publish_message(
+                    response,
+                    in_reply_to_message_id=str(message.message_id)
+                )
+                self.sia.memory.add_message(
+                    message_id=f"{chat_id}-{message_id}",
+                    message=response,
+                    message_type="reply",
+                    character=self.sia.character.name
+                )
+
+
+    async def _handle_group_message(self, message: TgMessage):
+        """Handle incoming messages"""
+        log_message(self.logger, "info", self, f"Processing message: {message.text.replace('\n', ' ')}")
+        
+        chat_id = message.chat.id
+
+        # Convert Telegram message to Sia message format
+        sia_message = self.telegram_message_to_sia_message(message)
+        message_id = f"{chat_id}-{str(message.message_id)}"
+        
+        # Check if the message already exists in the database
+        existing_message = self.sia.memory.get_messages(id=message_id)
+        if existing_message:
+            log_message(self.logger, "info", self, f"Message already exists in database: {existing_message}")
+            stored_message = existing_message[0]
+        else:
+            # Save message to database
+            stored_message = self.sia.memory.add_message(
+                message_id=message_id,
+                message=sia_message,
+                character=self.sia.character.name
+            )
+            log_message(self.logger, "info", self, f"Stored new message: {stored_message}")
+
+        should_respond = False
+
+        # Check for direct mentions
+        if f"@{self.sia.character.platform_settings.get('telegram', {}).get('username', '<no_username>')}" in message.text:
+            log_message(self.logger, "info", self, f"Responding to mention: {message.text}")
+            should_respond = True
+        # Check if message is a reply to bot's message
+        elif message.reply_to_message and message.reply_to_message.from_user.username == self.sia.character.platform_settings.get('telegram', {}).get('username'):
+            log_message(self.logger, "info", self, f"Responding to reply to bot's message: {message.text}")
+            should_respond = True
+
+        if should_respond and self.sia.character.responding.get("enabled", True):
+            response = self.sia.generate_response(stored_message)
+            if response:
+                message_id = await self.publish_message(
+                    response,
+                    in_reply_to_message_id=str(message.message_id)
+                )
+                self.sia.memory.add_message(
+                    message_id=f"{chat_id}-{message_id}",
+                    message=response,
+                    message_type="reply",
+                    character=self.sia.character.name
+                )
+        else:
+            log_message(self.logger, "info", self, f"No mention or reply to bot found: {message.text.replace('\n', ' ')}")
+
 
     async def publish_message(
         self,
@@ -199,57 +314,6 @@ class SiaTelegram(SiaClientInterface):
                 f"Error publishing message: {e}"
             )
             raise
-
-    async def _handle_group_message(self, message: TgMessage):
-        """Handle incoming messages"""
-        log_message(self.logger, "info", self, f"Processing message: {message.text.replace('\n', ' ')}")
-        
-        chat_id = message.chat.id
-
-        # Convert Telegram message to Sia message format
-        sia_message = self.telegram_message_to_sia_message(message)
-        message_id = f"{chat_id}-{str(message.message_id)}"
-        
-        # Check if the message already exists in the database
-        existing_message = self.sia.memory.get_messages(id=message_id)
-        if existing_message:
-            log_message(self.logger, "info", self, f"Message already exists in database: {existing_message}")
-            stored_message = existing_message[0]
-        else:
-            # Save message to database
-            stored_message = self.sia.memory.add_message(
-                message_id=message_id,
-                message=sia_message,
-                character=self.sia.character.name
-            )
-            log_message(self.logger, "info", self, f"Stored new message: {stored_message}")
-
-        should_respond = False
-
-        # Check for direct mentions
-        if f"@{self.sia.character.platform_settings.get('telegram', {}).get('username', '<no_username>')}" in message.text:
-            log_message(self.logger, "info", self, f"Responding to mention: {message.text}")
-            should_respond = True
-        # Check if message is a reply to bot's message
-        elif message.reply_to_message and message.reply_to_message.from_user.username == self.sia.character.platform_settings.get('telegram', {}).get('username'):
-            log_message(self.logger, "info", self, f"Responding to reply to bot's message: {message.text}")
-            should_respond = True
-
-        if should_respond and self.sia.character.responding.get("enabled", True):
-            response = self.sia.generate_response(stored_message)
-            if response:
-                message_id = await self.publish_message(
-                    response,
-                    in_reply_to_message_id=str(message.message_id)
-                )
-                self.sia.memory.add_message(
-                    message_id=f"{chat_id}-{message_id}",
-                    message=response,
-                    message_type="reply",
-                    character=self.sia.character.name
-                )
-        else:
-            log_message(self.logger, "info", self, f"No mention or reply to bot found: {message.text.replace('\n', ' ')}")
 
     async def post(self):
         """Implementation of periodic posting"""
