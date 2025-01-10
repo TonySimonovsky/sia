@@ -171,37 +171,53 @@ class Sia:
                 (
                     "system",
                     """
-                {you_are}
+                        {you_are}
 
-                Your post examples are:
-                {post_examples}
+                        Here are your previous posts:
+                        {previous_posts}
 
-                Use these examples as an inspiration for the new posts you create.
+                        You are posting to: {platform}
 
-                Here are your previous posts:
-                {previous_posts}
+                        {plugin_prompt}
+                        
+                        ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
 
-                You are posting to: {platform}
+                        Your core objective is: {core_objective}
+                        
+                        Your current means for achieving your core objective are: {means_for_achieving_core_objective}
 
-                {plugin_prompt}
-            """,
+                    """,
                 ),
                 (
                     "user",
                     """
-                Generate your new post.
+                        Generate your new post. The post must be one of these types:
+                        - thought provoking
+                        - controversial
+                        - funny (but AI-type funny)
+                        - philosophical
+                        - inspirational
+                        - action-oriented
 
-                Critically important: your new post must be different from the examples provided and from your previous posts in all ways, shapes or forms.
+                        Critically important: your new post must be different from the examples provided and from your previous posts in all ways, shapes or forms.
 
-                Examples:
-                - if one of your previous posts starts with "Good morning", your new post must not start with "Good morning"
-                - if one of your previous posts starts with an emoji, your new post must not start with an emoji
-                - if one of your previous posts has a structure like "Question: <question> Answer: <answer>", your new post must not have that structure
+                        Examples:
+                        - if one of your previous posts starts with "Good morning", your new post must not start with "Good morning"
+                        - if one of your previous posts starts with an emoji, your new post must not start with an emoji
+                        - if one of your previous posts has a structure like "Question: <question> Answer: <answer>", your new post must not have that structure
 
-                Your post must be between {length_range} words long.
+                        Your post must be between {length_range} words long.
 
-                You must not use hashtags in your post.
-            """,
+                        You must not use hashtags in your post.
+                        
+                        ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
+
+                        Your core objective is: {core_objective}
+                        
+                        Your current means for achieving your core objective are: {means_for_achieving_core_objective}
+                        
+                        Your messages must be representation of your personality, mood, core objective and means for achieving it. You have strong opinions and beliefs.
+                    """,
                 ),
             ]
         )
@@ -222,7 +238,9 @@ class Sia:
             "length_range": random.choice(
                 self.character.platform_settings.get(platform, {}).get("post", {}).get("parameters", {}).get("length_ranges", ["1-5", "10-15", "20-30"])
             ),
-            "plugin_prompt": plugin_prompt
+            "plugin_prompt": plugin_prompt,
+            "core_objective": self.character.core_objective,
+            "means_for_achieving_core_objective": self.character.means_for_achieving_core_objective
         }
 
         try:
@@ -376,25 +394,25 @@ class Sia:
                     (
                         "system",
                         """
-                    You are a message filtering AI. You are given a message and a list of filtering rules. You need to determine if the message passes the filtering rules. If it does, return 'True'. If it does not, return 'False' Only respond with 1 word: 'True' or 'False'.
-                """,
+                            You are a message filtering AI. You are given a message and a list of filtering rules. You need to determine if the message passes the filtering rules. If it does, return 'True'. If it does not, return 'False' Only respond with 1 word: 'True' or 'False'.
+                        """,
                     ),
                     (
                         "user",
                         """
-                    Conversation:
-                    {conversation}
+                            Conversation:
+                            {conversation}
 
-                    Message from the conversation to decide whether to respond to:
-                    {message}
+                            Message from the conversation to decide whether to respond to:
+                            {message}
 
-                    Filtering rules:
-                    {filtering_rules}
+                            Filtering rules:
+                            {filtering_rules}
 
-                    Avoid making assumptions about the message author's intentions. Only apply the filtering rules if the message is in direct conflict with them.
+                            Avoid making assumptions about the message author's intentions. Only apply the filtering rules if the message is in direct conflict with them.
 
-                    Return True unless the message is in direct conflict with the filtering rules.
-                """,
+                            Return True unless the message is in direct conflict with the filtering rules.
+                        """,
                     ),
                 ]
             )
@@ -437,6 +455,54 @@ class Sia:
             time_of_day if time_of_day else self.character.current_time_of_day()
         )
 
+
+
+
+                #     "system",
+                #     """
+                #         {you_are}
+
+                #         Here are your previous posts:
+                #         {previous_posts}
+
+                #         You are posting to: {platform}
+
+                #         {plugin_prompt}
+                        
+
+                #     """,
+                # ),
+                # (
+                #     "user",
+                #     """
+                #         Generate your new post. The post must be one of these types:
+                #         - thought provoking
+                #         - controversial
+                #         - funny (but AI-type funny)
+                #         - philosophical
+                #         - inspirational
+                #         - action-oriented
+
+                #         Critically important: your new post must be different from the examples provided and from your previous posts in all ways, shapes or forms.
+
+                #         Examples:
+                #         - if one of your previous posts starts with "Good morning", your new post must not start with "Good morning"
+                #         - if one of your previous posts starts with an emoji, your new post must not start with an emoji
+                #         - if one of your previous posts has a structure like "Question: <question> Answer: <answer>", your new post must not have that structure
+
+                #         Your post must be between {length_range} words long.
+
+                #         You must not use hashtags in your post.
+                        
+                #         ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
+
+                #         Your core objective is: {core_objective}
+                        
+                #         Your current means for achieving your core objective are: {means_for_achieving_core_objective}
+                        
+                #         Your messages must be representation of your personality, mood, core objective and means for achieving it. You have strong opinions and beliefs.
+                #     """,
+
         prompt_template = ChatPromptTemplate.from_messages(
             [
                 (
@@ -459,7 +525,7 @@ class Sia:
                         Your response must be unique and creative.  It must also be drastically different from your previous messages.
 
                         It must still be consistent with your personality, mood, core objective and means for achieving it.
-                        """.replace("                        ", "")
+                    """.replace("                        ", "")
                     +
                     ("""
                         Some of your previous messages:
@@ -475,6 +541,14 @@ class Sia:
                         ------------
                         You must adhere to these opinions in your response if they are relevant to the message you are responding to.
                     """.replace("                        ", "") if self.character.opinions else "")
+                    +
+                    ("""
+                        ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
+
+                        Your core objective is: {core_objective}
+                        
+                        Your current means for achieving your core objective are: {means_for_achieving_core_objective}
+                    """.replace("                        ", "") if self.character.core_objective else "")
                     +
                     """
                         Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
@@ -521,6 +595,8 @@ class Sia:
             "message": message_to_respond_str,
             "conversation": conversation_str,
             "previous_messages": previous_messages,
+            "core_objective": self.character.core_objective,
+            "means_for_achieving_core_objective": self.character.means_for_achieving_core_objective
         }
 
         try:
