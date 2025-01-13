@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sia Test Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #chat-container {
+            height: 400px;
+            border: 1px solid #ccc;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message-author {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .agent-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+        #message-input {
+            width: 80%;
+            padding: 8px;
+        }
+        #send-button {
+            width: 18%;
+            padding: 8px;
+        }
+        #agent-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            width: 70%;
+            border-radius: 5px;
+        }
+        #agent-description {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+        }
+        .agents-list {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .agent-chip {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 4px;
+            background-color: #e0e0e0;
+            border-radius: 16px;
+            font-size: 14px;
+        }
+        #logs-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid;
+            font-family: monospace;
+        }
+        .log-info {
+            border-left-color: #17a2b8;
+            background-color: #e3f2fd;
+        }
+        .log-error {
+            border-left-color: #dc3545;
+            background-color: #fff3f3;
+        }
+        .log-success {
+            border-left-color: #28a745;
+            background-color: #f0fff0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-Agent Test Chat</h1>
+    
+    <div class="agents-list">
+        <h3>Active Agents:</h3>
+        <div id="agents-container"></div>
+        <button id="create-agent-btn">Create New Agent</button>
+    </div>
+
+    <div id="chat-container"></div>
+    <div>
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <button id="send-button">Send</button>
+    </div>
+
+    <div id="logs-container">
+        <h3>System Logs:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <div id="agent-modal">
+        <div class="modal-content">
+            <h2>Create New Agent</h2>
+            <input type="text" id="agent-name" placeholder="Agent Name" style="width: 100%; margin-bottom: 10px;">
+            <textarea id="agent-description" placeholder="Describe the agent's personality, goals, and behavior..."></textarea>
+            <button id="create-agent-submit">Create</button>
+            <button id="create-agent-cancel">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const modal = document.getElementById('agent-modal');
+        const createAgentBtn = document.getElementById('create-agent-btn');
+        const createAgentSubmit = document.getElementById('create-agent-submit');
+        const createAgentCancel = document.getElementById('create-agent-cancel');
+        const agentsContainer = document.getElementById('agents-container');
+        const logsContainer = document.getElementById('logs');
+
+        // Show modal
+        createAgentBtn.onclick = () => {
+            modal.style.display = 'block';
+        }
+
+        // Hide modal
+        createAgentCancel.onclick = () => {
+            modal.style.display = 'none';
+        }
+
+        // Create agent
+        createAgentSubmit.onclick = async () => {
+            const name = document.getElementById('agent-name').value;
+            const description = document.getElementById('agent-description').value;
+            
+            if (!name || !description) {
+                addLog('Name and description are required!', 'error');
+                return;
+            }
+
+            addLog(`Creating new agent "${name}"...`);
+            
+            try {
+                const response = await fetch('/create_agent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        name: name,
+                        description: description 
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    addLog(data.message, 'success');
+                    updateAgentsList();
+                    modal.style.display = 'none';
+                    document.getElementById('agent-name').value = '';
+                    document.getElementById('agent-description').value = '';
+                } else {
+                    addLog(`Error creating agent: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        async function updateAgentsList() {
+            const response = await fetch('/get_agents');
+            const agents = await response.json();
+            agentsContainer.innerHTML = agents.map(agent => 
+                `<span class="agent-chip">${agent.name}</span>`
+            ).join('');
+        }
+
+        function addMessage(message, author, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'agent-message'}`;
+            
+            const authorDiv = document.createElement('div');
+            authorDiv.className = 'message-author';
+            authorDiv.textContent = author;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = message;
+            
+            messageDiv.appendChild(authorDiv);
+            messageDiv.appendChild(contentDiv);
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'You', true);
+            messageInput.value = '';
+            addLog(`Sending message: "${message}"`);
+
+            try {
+                const response = await fetch('/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                addLog(`Received ${data.responses.length} responses`);
+                
+                for (const response of data.responses) {
+                    addMessage(response.content, response.author, false);
+                    addLog(`${response.author} responded`, 'success');
+                }
+            } catch (error) {
+                addLog(`Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+                addMessage('Error: Could not get response', 'System', false);
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Initial agents list load
+        updateAgentsList();
+
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html> 
