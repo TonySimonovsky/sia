@@ -228,8 +228,7 @@
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message) return;
-
-            addMessage(message, 'You', true);
+            
             messageInput.value = '';
             addLog(`Sending message: "${message}"`);
 
@@ -242,12 +241,29 @@
                     body: JSON.stringify({ message })
                 });
 
-                const data = await response.json();
-                addLog(`Received ${data.responses.length} responses`);
-                
-                for (const response of data.responses) {
-                    addMessage(response.content, response.author, false);
-                    addLog(`${response.author} responded`, 'success');
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    
+                    const text = decoder.decode(value);
+                    const messages = text.split('\n').filter(line => line.trim());
+                    
+                    for (const msgText of messages) {
+                        try {
+                            const msgData = JSON.parse(msgText);
+                            if (msgData.type === 'user_message') {
+                                addMessage(msgData.content, msgData.author, true);
+                            } else if (msgData.type === 'agent_message') {
+                                addMessage(msgData.content, msgData.author, false);
+                                addLog(`${msgData.author} responded`, 'success');
+                            }
+                        } catch (e) {
+                            console.error('Error parsing message:', e);
+                        }
+                    }
                 }
             } catch (error) {
                 addLog(`Error: ${error.message}`, 'error');

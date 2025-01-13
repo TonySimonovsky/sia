@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from datetime import datetime, timezone
 import uuid
 import json
@@ -159,54 +159,139 @@ class WebTester:
             message_text = request.json.get('message')
             chat_id = str(uuid.uuid4())
             
-            # Get responses from all agents
-            responses = []
-            for agent_name, agent in self.agents.items():
-                try:
-                    # Create and store user message for this agent
-                    message = SiaMessageGeneratedSchema(
-                        conversation_id=chat_id,
-                        content=message_text,
-                        platform="test",
-                        author="test_user"
-                    )
+            def generate_responses():
+                # Send user message first
+                yield json.dumps({
+                    'type': 'user_message',
+                    'content': message_text,
+                    'author': 'You'
+                }) + '\n'
+                
+                # Get initial responses from agents
+                for response in self.get_agents_responses(message_text, chat_id, "test_user"):
+                    yield json.dumps({
+                        'type': 'agent_message',
+                        'content': response['content'],
+                        'author': response['author']
+                    }) + '\n'
+                
+                # Let agents discuss (max 5 rounds)
+                for round_num in range(5):
+                    agent_responses = []
+                    last_messages = {}
                     
-                    # Store message in agent's memory
-                    stored_message = agent.memory.add_message(
-                        message_id=f"test-{chat_id}",
-                        message=message,
-                        message_type="message",
+                    # Collect last messages from all agents
+                    for agent_name, agent in self.agents.items():
+                        messages = agent.memory.get_messages(
+                            conversation_id=chat_id,
+                            platform="test",
+                            sort_by="wen_posted",
+                            sort_order="desc"
+                        )
+                        if messages:
+                            last_messages[agent_name] = messages[0]  # Take first message since they're sorted desc
+                        
+                    if not last_messages:
+                        break
+                    
+                    # Get latest message across all agents
+                    latest_message = max(last_messages.values(), key=lambda x: x.wen_posted)
+                    
+                    # Let each agent respond to the latest message
+                    for agent_name, agent in self.agents.items():
+                        try:
+                            # Skip if the latest message is from this agent
+                            if latest_message.author == agent_name:
+                                continue
+                                
+                            message = SiaMessageGeneratedSchema(
+                                conversation_id=chat_id,
+                                content=latest_message.content,
+                                platform="test",
+                                author=latest_message.author
+                            )
+                            
+                            stored_message = agent.memory.add_message(
+                                message_id=f"test-{chat_id}-round{round_num}",
+                                message=message,
+                                message_type="message",
+                                character=agent.character.name
+                            )
+                            
+                            response = agent.generate_response(
+                                message=stored_message,
+                                platform="test",
+                                use_filtering_rules=False
+                            )
+                            
+                            if response:
+                                agent.memory.add_message(
+                                    message_id=f"test-response-{chat_id}-round{round_num}-{agent_name}",
+                                    message=response,
+                                    message_type="reply",
+                                    character=agent.character.name
+                                )
+                                
+                                yield json.dumps({
+                                    'type': 'agent_message',
+                                    'content': response.content,
+                                    'author': agent_name
+                                }) + '\n'
+                                
+                                agent_responses.append(response)
+                                
+                        except Exception as e:
+                            log_message(logger, "error", self, 
+                                f"Error getting response from agent {agent_name} in round {round_num}: {str(e)}")
+                            continue
+                    
+                    if not agent_responses:
+                        break
+            
+            return Response(generate_responses(), mimetype='text/event-stream')
+            
+    def get_agents_responses(self, message_text, chat_id, author):
+        """Get initial responses from all agents to a user message"""
+        responses = []
+        for agent_name, agent in self.agents.items():
+            try:
+                message = SiaMessageGeneratedSchema(
+                    conversation_id=chat_id,
+                    content=message_text,
+                    platform="test",
+                    author=author
+                )
+                
+                stored_message = agent.memory.add_message(
+                    message_id=f"test-{chat_id}",
+                    message=message,
+                    message_type="message", 
+                    character=agent.character.name
+                )
+                
+                response = agent.generate_response(
+                    message=stored_message,
+                    platform="test",
+                    use_filtering_rules=False
+                )
+                
+                if response:
+                    agent.memory.add_message(
+                        message_id=f"test-response-{chat_id}-{agent_name}",
+                        message=response,
+                        message_type="reply",
                         character=agent.character.name
                     )
                     
-                    # Generate response from this agent
-                    response = agent.generate_response(
-                        message=stored_message,
-                        platform="test",
-                        use_filtering_rules=False
-                    )
-                    
-                    if response:
-                        # Store response in agent's memory
-                        agent.memory.add_message(
-                            message_id=f"test-response-{chat_id}-{agent_name}",
-                            message=response,
-                            message_type="reply",
-                            character=agent.character.name
-                        )
-                        
-                        responses.append({
-                            "author": agent_name,
-                            "content": response.content
-                        })
-                except Exception as e:
-                    log_message(logger, "error", self, f"Error getting response from agent {agent_name}: {str(e)}")
-                    continue
-            
-            return jsonify({
-                'user_message': message_text,
-                'responses': responses
-            })
+                    responses.append({
+                        "author": agent_name,
+                        "content": response.content
+                    })
+            except Exception as e:
+                log_message(logger, "error", self, f"Error getting response from agent {agent_name}: {str(e)}")
+                continue
+                
+        return responses
     
     def run(self, host='127.0.0.1', port=5000):
         os.makedirs("characters", exist_ok=True)

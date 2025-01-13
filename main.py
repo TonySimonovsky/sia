@@ -1,20 +1,19 @@
 from utils.logging_utils import enable_logging, setup_logging
 from sia.sia import Sia
+from sia.testing.web_interface import WebTester
 import asyncio
 import os
-
 from dotenv import load_dotenv
 
 load_dotenv()
-
 
 logger = setup_logging()
 logging_enabled = True
 enable_logging(logging_enabled)
 
-
 async def main():
     character_name_id = os.getenv("CHARACTER_NAME_ID")
+    testing_mode = os.getenv("TESTING_MODE", "false").lower() == "true"
 
     client_creds = {}
     if os.getenv("TW_API_KEY"):
@@ -34,12 +33,16 @@ async def main():
         character_json_filepath=f"characters/{character_name_id}.json",
         **client_creds,
         memory_db_path=os.getenv("DB_PATH"),
-        # knowledge_module_classes=[GoogleNewsModule],
         logging_enabled=logging_enabled,
     )
 
-    sia.run()
-
+    if testing_mode:
+        # Run in testing mode with web interface
+        tester = WebTester(sia)
+        tester.run()
+    else:
+        # Run normal mode
+        sia.run()
 
 if __name__ == "__main__":
     asyncio.run(main())
