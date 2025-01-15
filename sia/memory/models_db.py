@@ -53,8 +53,8 @@ class SiaSocialMemoryModel(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid4()))
     character_name = Column(String, nullable=False)
-    user_id = Column(String, nullable=False)  # Platform username
     platform = Column(String, nullable=False)
+    user_id = Column(String, nullable=False)  # Platform username
     last_interaction = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     interaction_count = Column(Integer, default=0)
     opinion = Column(String)

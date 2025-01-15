@@ -326,39 +326,56 @@ class SiaMemory:
                         sort_by="wen_posted",
                         sort_order="asc"
                     )
-                    log_message(self.logger, "info", self, f"Found {len(historical_messages)} historical messages")
                     
-                    # Convert messages to conversation history format
-                    history = []
-                    last_message_id = None
-                    for msg in historical_messages:
-                        history.append({
-                            "message_id": msg.id,
-                            "role": "user",
-                            "content": msg.content
-                        })
-                        last_message_id = msg.id
-                        # Add Sia's responses
-                        responses = self.get_messages(
-                            response_to=msg.id,
-                            author=self.character.platform_settings.get(platform, {}).get("username", self.character.name)
+                    # Initialize history with current message if no historical messages
+                    if not historical_messages:
+                        history = [{
+                            "message_id": message_id,
+                            "role": role,
+                            "content": content
+                        }]
+                        last_message_id = message_id  # Set this for new entries
+                    else:
+                        # Get historical messages for initial opinion
+                        historical_messages = self.get_messages(
+                            author=user_id,
+                            platform=platform,
+                            sort_by="wen_posted",
+                            sort_order="asc"
                         )
-                        for resp in responses:
+                        log_message(self.logger, "info", self, f"Found {len(historical_messages)} historical messages")
+                        
+                        # Convert messages to conversation history format
+                        history = []
+                        last_message_id = None
+                        for msg in historical_messages:
                             history.append({
-                                "message_id": resp.id,
-                                "role": "assistant",
-                                "content": resp.content
+                                "message_id": msg.id,
+                                "role": "user",
+                                "content": msg.content
                             })
-                            last_message_id = resp.id
-                    
-                    log_message(self.logger, "info", self, f"Processed {len(history)} total interactions")
-                    
-                    # Generate initial opinion if we have historical messages
-                    initial_opinion = None
-                    if history:
-                        log_message(self.logger, "info", self, "Generating initial opinion based on historical messages")
-                        initial_opinion = self._generate_opinion(history)
-                        log_message(self.logger, "info", self, f"Generated initial opinion: {initial_opinion}")
+                            last_message_id = msg.id
+                            # Add Sia's responses
+                            responses = self.get_messages(
+                                response_to=msg.id,
+                                author=self.character.platform_settings.get(platform, {}).get("username", self.character.name)
+                            )
+                            for resp in responses:
+                                history.append({
+                                    "message_id": resp.id,
+                                    "role": "assistant",
+                                    "content": resp.content
+                                })
+                                last_message_id = resp.id
+                        
+                        log_message(self.logger, "info", self, f"Processed {len(history)} total interactions")
+                        
+                        # Generate initial opinion if we have historical messages
+                        initial_opinion = None
+                        if history:
+                            log_message(self.logger, "info", self, "Generating initial opinion based on historical messages")
+                            initial_opinion = self._generate_opinion(history)
+                            log_message(self.logger, "info", self, f"Generated initial opinion: {initial_opinion}")
                     
                     memory = SiaSocialMemoryModel(
                         character_name=self.character.name,
@@ -367,7 +384,7 @@ class SiaMemory:
                         conversation_history=history[-20:],  # Keep last 20 messages
                         interaction_count=len(history),
                         opinion=initial_opinion,
-                        last_processed_message_id=last_message_id
+                        last_processed_message_id=message_id  # Always use current message_id for new entries
                     )
                     session.add(memory)
                     log_message(self.logger, "info", self, "Created new social memory entry")
@@ -382,6 +399,7 @@ class SiaMemory:
                 memory.conversation_history = history[-20:]  # Keep last 20 messages
                 memory.interaction_count += 1
                 memory.last_interaction = datetime.now(timezone.utc)
+                memory.last_processed_message_id = message_id  # Always update this
                 
                 log_message(self.logger, "info", self, f"Updated conversation history. Total interactions: {memory.interaction_count}")
 

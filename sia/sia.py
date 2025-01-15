@@ -459,7 +459,10 @@ class Sia:
             time_of_day if time_of_day else self.character.current_time_of_day()
         )
 
-        # Get social memory
+        # Use the platform from the message instead of default
+        platform = message.platform
+        
+        # Get social memory with correct platform
         social_memory = self.memory.get_social_memory(message.author, platform)
         social_memory_str = ""
         if social_memory:
@@ -612,16 +615,17 @@ class Sia:
 
         # After generating response, update social memory
         if generated_response_schema:
+            # Update social memory with correct platform from message
             self.memory.update_social_memory(
                 user_id=message.author,
-                platform=platform,
+                platform=message.platform,  # Use message.platform instead of parameter
                 message_id=message.id,
                 content=message.content,
                 role="user"
             )
             self.memory.update_social_memory(
                 user_id=message.author,
-                platform=platform,
+                platform=message.platform,  # Use message.platform instead of parameter
                 message_id=generated_response_schema.id,
                 content=generated_response_schema.content,
                 role="assistant"
