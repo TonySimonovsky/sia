@@ -421,7 +421,8 @@ class SiaMemory:
                     - Attitude and behavior
                     - Engagement quality
                     
-                    Output a concise 2-3 sentence opinion.
+                    Output ONLY a concise 2-3 sentence opinion. Do not include any intro text like 'Based on...' or 'My opinion is...'.
+                    Just state the opinion directly.
                 """),
                 ("user", """
                     Previous opinion: {previous_opinion}
@@ -429,7 +430,7 @@ class SiaMemory:
                     Recent conversations:
                     {conversation_history}
                     
-                    Based on this, what is your updated opinion of this user?
+                    What is your updated opinion of this user?
                 """)
             ])
 
@@ -445,8 +446,13 @@ class SiaMemory:
                 "conversation_history": conversation_str
             })
             
-            log_message(self.logger, "info", self, f"Generated new opinion: {result.content}")
-            return result.content
+            # Clean up the response to remove any intro/outro text
+            opinion = result.content.strip()
+            if opinion.lower().startswith(("based on", "my opinion", "i think", "i believe")):
+                opinion = " ".join(opinion.split()[2:])
+            
+            log_message(self.logger, "info", self, f"Generated new opinion: {opinion}")
+            return opinion
             
         except Exception as e:
             log_message(self.logger, "error", self, f"Error generating opinion: {e}")
