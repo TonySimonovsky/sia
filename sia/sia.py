@@ -173,9 +173,18 @@ class Sia:
                     """
                         {you_are}
 
-                        Here are your previous posts:
+                        Here are your previous posts examples:
+                        ------------
                         {previous_posts}
-
+                        ------------
+                        Your new post must be COMPLETELY DIFFERENT from all your previous posts in:
+                        - Topic
+                        - Structure 
+                        - Style
+                        - Opening
+                        - Closing
+                        - Overall message
+                        
                         You are posting to: {platform}
 
                         {plugin_prompt}
