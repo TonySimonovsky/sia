@@ -99,9 +99,12 @@ class SiaMemory:
                 query = query.filter_by(flagged=bool(flagged))
 
             # Handle sorting
-            if sort_by:
-                order_func = asc if sort_order == "asc" else desc
-                query = query.order_by(order_func(sort_by))
+            if not sort_by:
+                sort_by = "wen_posted"
+                sort_order = "desc"
+
+            order_func = asc if sort_order == "asc" else desc
+            query = query.order_by(order_func(sort_by))
 
             # Execute query and convert to schema
             messages = query.all()

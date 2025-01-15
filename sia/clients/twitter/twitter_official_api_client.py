@@ -657,10 +657,16 @@ class SiaTwitterOfficial(SiaClientInterface):
                     # temporary:
                     #   skipping conversations where
                     #   we've already sent 3+ replies
-                    current_conversation = self.get_conversation(r.conversation_id)
+                    conversation = self.get_conversation(r.conversation_id)
+                    conversation_first_message = self.memory.get_messages(
+                        id=r.conversation_id,
+                        platform="twitter",
+                        not_author=self.character.twitter_username
+                    )
+                    conversation = conversation_first_message + conversation[-20:]
                     own_messages_count = sum(
                         1
-                        for msg in current_conversation
+                        for msg in conversation
                         if msg.author == self.character.twitter_username
                     )
                     if own_messages_count >= 3:

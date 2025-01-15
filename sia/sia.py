@@ -378,6 +378,10 @@ class Sia:
             self.logger, "info", self, f"Message to respond (id {message.id}): {message_to_respond_str.replace('\n', ' ')}"
         )
 
+        # Add check to prevent responding to own messages
+        if message.author == self.character.platform_settings.get(platform, {}).get("username"):
+            return None
+
         # do not answer if the message does not pass the filtering rules but if
         # we need to filter the response
         if self.character.responding.get("filtering_rules") and use_filtering_rules:
