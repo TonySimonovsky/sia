@@ -399,26 +399,28 @@ class SiaMemory:
                 memory.conversation_history = history[-20:]  # Keep last 20 messages
                 memory.interaction_count += 1
                 memory.last_interaction = datetime.now(timezone.utc)
-                memory.last_processed_message_id = message_id  # Always update this
                 
-                log_message(self.logger, "info", self, f"Updated conversation history. Total interactions: {memory.interaction_count}")
-
-                # Get unprocessed messages count
-                last_processed_idx = next(
-                    (i for i, msg in enumerate(history) if msg["message_id"] == memory.last_processed_message_id), 
-                    -1
-                )
-                unprocessed_messages = history[last_processed_idx + 1:]
+                # Calculate unprocessed messages before using it
+                if memory.last_processed_message_id:
+                    # Get index of last processed message
+                    last_processed_idx = next(
+                        (i for i, msg in enumerate(history) if msg["message_id"] == memory.last_processed_message_id),
+                        -1
+                    )
+                    unprocessed_messages = history[last_processed_idx + 1:] if last_processed_idx >= 0 else history
+                else:
+                    unprocessed_messages = history
                 
-                log_message(self.logger, "info", self, f"Found {len(unprocessed_messages)} unprocessed messages")
-
-                # Update opinion if we have 10 or more unprocessed messages
-                if len(unprocessed_messages) >= 10:
-                    log_message(self.logger, "info", self, "Generating new opinion based on recent interactions")
-                    opinion = self._generate_opinion(history, memory.opinion)
-                    log_message(self.logger, "info", self, f"Updated opinion: {opinion}")
-                    memory.opinion = opinion
+                # Now we can safely use unprocessed_messages
+                if len(unprocessed_messages) >= 10 or memory.last_processed_message_id is None:
                     memory.last_processed_message_id = message_id
+                    
+                    # Update opinion if we have enough unprocessed messages
+                    if len(unprocessed_messages) >= 10:
+                        log_message(self.logger, "info", self, "Generating new opinion based on recent interactions")
+                        opinion = self._generate_opinion(history, memory.opinion)
+                        log_message(self.logger, "info", self, f"Updated opinion: {opinion}")
+                        memory.opinion = opinion
 
                 session.commit()
                 return SiaSocialMemorySchema.from_orm(memory)
