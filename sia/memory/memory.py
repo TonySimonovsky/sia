@@ -1,5 +1,6 @@
 import textwrap
 from datetime import datetime, timezone
+from typing import List, Dict, Optional
 
 from sqlalchemy import asc, create_engine, desc
 from sqlalchemy.orm import sessionmaker
@@ -296,83 +297,150 @@ class SiaMemory:
         role: str = "user"
     ) -> SiaSocialMemorySchema:
         with self.session_scope() as session:
-            memory = session.query(SiaSocialMemoryModel).filter_by(
-                character_name=self.character.name,
-                user_id=user_id,
-                platform=platform
-            ).first()
-
-            if not memory:
-                # Get historical messages for initial opinion
-                historical_messages = self.get_messages(
-                    author=user_id,
-                    platform=platform,
-                    sort_by="wen_posted",
-                    sort_order="asc"
-                )
+            try:
+                log_message(self.logger, "info", self, f"Updating social memory for user {user_id} on {platform}")
                 
-                # Convert messages to conversation history format
-                history = []
-                last_message_id = None
-                for msg in historical_messages:
-                    history.append({
-                        "message_id": msg.id,
-                        "role": "user",
-                        "content": msg.content
-                    })
-                    last_message_id = msg.id
-                    # Add Sia's responses
-                    responses = self.get_messages(
-                        response_to=msg.id,
-                        author=self.character.platform_settings.get(platform, {}).get("username", self.character.name)
-                    )
-                    for resp in responses:
-                        history.append({
-                            "message_id": resp.id,
-                            "role": "assistant",
-                            "content": resp.content
-                        })
-                        last_message_id = resp.id
-                
-                # Generate initial opinion if we have historical messages
-                initial_opinion = None
-                if history:
-                    initial_opinion = self._generate_opinion(history)
-                
-                memory = SiaSocialMemoryModel(
+                memory = session.query(SiaSocialMemoryModel).filter_by(
                     character_name=self.character.name,
                     user_id=user_id,
-                    platform=platform,
-                    conversation_history=history[-20:],  # Keep last 20 messages
-                    interaction_count=len(history),
-                    opinion=initial_opinion,
-                    last_processed_message_id=last_message_id
+                    platform=platform
+                ).first()
+
+                if not memory:
+                    log_message(self.logger, "info", self, f"Creating new social memory for user {user_id}")
+                    
+                    # Get historical messages for initial opinion
+                    historical_messages = self.get_messages(
+                        author=user_id,
+                        platform=platform,
+                        sort_by="wen_posted",
+                        sort_order="asc"
+                    )
+                    log_message(self.logger, "info", self, f"Found {len(historical_messages)} historical messages")
+                    
+                    # Convert messages to conversation history format
+                    history = []
+                    last_message_id = None
+                    for msg in historical_messages:
+                        history.append({
+                            "message_id": msg.id,
+                            "role": "user",
+                            "content": msg.content
+                        })
+                        last_message_id = msg.id
+                        # Add Sia's responses
+                        responses = self.get_messages(
+                            response_to=msg.id,
+                            author=self.character.platform_settings.get(platform, {}).get("username", self.character.name)
+                        )
+                        for resp in responses:
+                            history.append({
+                                "message_id": resp.id,
+                                "role": "assistant",
+                                "content": resp.content
+                            })
+                            last_message_id = resp.id
+                    
+                    log_message(self.logger, "info", self, f"Processed {len(history)} total interactions")
+                    
+                    # Generate initial opinion if we have historical messages
+                    initial_opinion = None
+                    if history:
+                        log_message(self.logger, "info", self, "Generating initial opinion based on historical messages")
+                        initial_opinion = self._generate_opinion(history)
+                        log_message(self.logger, "info", self, f"Generated initial opinion: {initial_opinion}")
+                    
+                    memory = SiaSocialMemoryModel(
+                        character_name=self.character.name,
+                        user_id=user_id,
+                        platform=platform,
+                        conversation_history=history[-20:],  # Keep last 20 messages
+                        interaction_count=len(history),
+                        opinion=initial_opinion,
+                        last_processed_message_id=last_message_id
+                    )
+                    session.add(memory)
+                    log_message(self.logger, "info", self, "Created new social memory entry")
+                
+                # Update conversation history
+                history = memory.conversation_history or []
+                history.append({
+                    "message_id": message_id,
+                    "role": role,
+                    "content": content
+                })
+                memory.conversation_history = history[-20:]  # Keep last 20 messages
+                memory.interaction_count += 1
+                memory.last_interaction = datetime.now(timezone.utc)
+                
+                log_message(self.logger, "info", self, f"Updated conversation history. Total interactions: {memory.interaction_count}")
+
+                # Get unprocessed messages count
+                last_processed_idx = next(
+                    (i for i, msg in enumerate(history) if msg["message_id"] == memory.last_processed_message_id), 
+                    -1
                 )
-                session.add(memory)
+                unprocessed_messages = history[last_processed_idx + 1:]
+                
+                log_message(self.logger, "info", self, f"Found {len(unprocessed_messages)} unprocessed messages")
+
+                # Update opinion if we have 10 or more unprocessed messages
+                if len(unprocessed_messages) >= 10:
+                    log_message(self.logger, "info", self, "Generating new opinion based on recent interactions")
+                    opinion = self._generate_opinion(history, memory.opinion)
+                    log_message(self.logger, "info", self, f"Updated opinion: {opinion}")
+                    memory.opinion = opinion
+                    memory.last_processed_message_id = message_id
+
+                session.commit()
+                return SiaSocialMemorySchema.from_orm(memory)
+                
+            except Exception as e:
+                log_message(self.logger, "error", self, f"Error updating social memory: {e}")
+                raise e
+
+    def _generate_opinion(self, conversation_history: List[Dict], previous_opinion: Optional[str] = None) -> str:
+        try:
+            log_message(self.logger, "info", self, "Starting opinion generation")
+            log_message(self.logger, "info", self, f"Previous opinion: {previous_opinion}")
             
-            # Update conversation history
-            history = memory.conversation_history or []
-            history.append({
-                "message_id": message_id,
-                "role": role,
-                "content": content
+            prompt_template = ChatPromptTemplate.from_messages([
+                ("system", """
+                    You are analyzing conversations to form an opinion about a user.
+                    Review the conversation history and previous opinion (if any) to form an updated opinion.
+                    Focus on the user's:
+                    - Communication style
+                    - Interests and values
+                    - Attitude and behavior
+                    - Engagement quality
+                    
+                    Output a concise 2-3 sentence opinion.
+                """),
+                ("user", """
+                    Previous opinion: {previous_opinion}
+                    
+                    Recent conversations:
+                    {conversation_history}
+                    
+                    Based on this, what is your updated opinion of this user?
+                """)
+            ])
+
+            conversation_str = "\n".join([
+                f"{msg['role']}: {msg['content']}" 
+                for msg in conversation_history
+            ])
+
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.0)
+            chain = prompt_template | llm
+            result = chain.invoke({
+                "previous_opinion": previous_opinion or "No previous opinion",
+                "conversation_history": conversation_str
             })
-            memory.conversation_history = history[-20:]  # Keep last 20 messages
-            memory.interaction_count += 1
-            memory.last_interaction = datetime.now(timezone.utc)
-
-            # Get unprocessed messages count
-            last_processed_idx = next(
-                (i for i, msg in enumerate(history) if msg["message_id"] == memory.last_processed_message_id), 
-                -1
-            )
-            unprocessed_messages = history[last_processed_idx + 1:]
-
-            # Update opinion if we have 10 or more unprocessed messages
-            if len(unprocessed_messages) >= 10:
-                opinion = self._generate_opinion(history, memory.opinion)
-                memory.opinion = opinion
-                memory.last_processed_message_id = message_id
-
-            session.commit()
-            return SiaSocialMemorySchema.from_orm(memory)
+            
+            log_message(self.logger, "info", self, f"Generated new opinion: {result.content}")
+            return result.content
+            
+        except Exception as e:
+            log_message(self.logger, "error", self, f"Error generating opinion: {e}")
+            return previous_opinion or "Unable to form opinion"
