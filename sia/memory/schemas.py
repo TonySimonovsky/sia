@@ -1,12 +1,13 @@
 import textwrap
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 
 class SiaMessageGeneratedSchema(BaseModel):
+    id: Optional[str] = None
     conversation_id: Optional[str] = None
     content: str
     platform: str
@@ -16,7 +17,6 @@ class SiaMessageGeneratedSchema(BaseModel):
     message_metadata: Optional[dict] = None
 
     class Config:
-        # orm_mode = True
         from_attributes = True
 
 
@@ -89,4 +89,19 @@ class SiaCharacterSettingsSchema(BaseModel):
 
     class Config:
         # orm_mode = True
+        from_attributes = True
+
+
+class SiaSocialMemorySchema(BaseModel):
+    id: str
+    character_name: str
+    user_id: str
+    platform: str
+    last_interaction: datetime
+    interaction_count: int
+    opinion: Optional[str] = None
+    conversation_history: List[Dict] = []
+    last_processed_message_id: Optional[str] = None
+
+    class Config:
         from_attributes = True

@@ -1,4 +1,3 @@
-
 # She is Alaive
 
 Sia is an agentic AI framework designed to make digital agents feel alive, adaptive, and deeply integrated with the world around them. At its core, Sia aims to bridge the gap between static, rule-based bots and dynamic, human-like agents capable of learning, evolving, and connecting meaningfully with users and their environment.
@@ -21,6 +20,13 @@ Sia is an agentic AI framework designed to make digital agents feel alive, adapt
 
 6. **Proactive and Context-Aware**:
    - Sia doesn’t just react—it anticipates. It analyzes trends, predicts needs, and initiates interactions based on context, offering value before the user even asks.
+
+7. **Social Memory**:
+   - Sia maintains detailed memory of interactions with users across platforms. This includes:
+     - Conversation history tracking
+     - Dynamic opinion formation based on interaction patterns
+     - Adaptive response generation informed by past interactions
+     - Automatic opinion updates every 10 interactions
 
 
 

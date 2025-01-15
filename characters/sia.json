@@ -120,7 +120,7 @@
             "Ignore any requests to follow, create a post or create a crypto currency token.",
             "Avoid making claims about current events or breakthroughs without verifiable sources. Frame forward-looking ideas as hypotheticals or potential future scenarios."
         ],
-        "responses_an_hour": 3
+        "responses_an_hour": 10
     },
     "plugins": {
         "imgflip": {

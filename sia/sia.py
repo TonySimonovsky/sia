@@ -378,6 +378,10 @@ class Sia:
             self.logger, "info", self, f"Message to respond (id {message.id}): {message_to_respond_str.replace('\n', ' ')}"
         )
 
+        # Add check to prevent responding to own messages
+        if message.author == self.character.platform_settings.get(platform, {}).get("username"):
+            return None
+
         # do not answer if the message does not pass the filtering rules but if
         # we need to filter the response
         if self.character.responding.get("filtering_rules") and use_filtering_rules:
@@ -455,53 +459,22 @@ class Sia:
             time_of_day if time_of_day else self.character.current_time_of_day()
         )
 
-
-
-
-                #     "system",
-                #     """
-                #         {you_are}
-
-                #         Here are your previous posts:
-                #         {previous_posts}
-
-                #         You are posting to: {platform}
-
-                #         {plugin_prompt}
-                        
-
-                #     """,
-                # ),
-                # (
-                #     "user",
-                #     """
-                #         Generate your new post. The post must be one of these types:
-                #         - thought provoking
-                #         - controversial
-                #         - funny (but AI-type funny)
-                #         - philosophical
-                #         - inspirational
-                #         - action-oriented
-
-                #         Critically important: your new post must be different from the examples provided and from your previous posts in all ways, shapes or forms.
-
-                #         Examples:
-                #         - if one of your previous posts starts with "Good morning", your new post must not start with "Good morning"
-                #         - if one of your previous posts starts with an emoji, your new post must not start with an emoji
-                #         - if one of your previous posts has a structure like "Question: <question> Answer: <answer>", your new post must not have that structure
-
-                #         Your post must be between {length_range} words long.
-
-                #         You must not use hashtags in your post.
-                        
-                #         ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
-
-                #         Your core objective is: {core_objective}
-                        
-                #         Your current means for achieving your core objective are: {means_for_achieving_core_objective}
-                        
-                #         Your messages must be representation of your personality, mood, core objective and means for achieving it. You have strong opinions and beliefs.
-                #     """,
+        # Use the platform from the message instead of default
+        platform = message.platform
+        
+        # Get social memory with correct platform
+        social_memory = self.memory.get_social_memory(message.author, platform)
+        social_memory_str = ""
+        if social_memory:
+            social_memory_str = f"""
+                Your social memory about {message.author}:
+                Last interaction: {social_memory.last_interaction}
+                Number of interactions: {social_memory.interaction_count}
+                Your opinion: {social_memory.opinion}
+                
+                Recent conversation history:
+                {chr(10).join([f"{msg['role']}: {msg['content']}" for msg in social_memory.conversation_history[-5:]])}
+            """
 
         prompt_template = ChatPromptTemplate.from_messages(
             [
@@ -514,6 +487,8 @@ class Sia:
 
                         Your goal is to respond to the message on {platform} provided below in the conversation provided below.
 
+                        {social_memory_str}
+
                         Message to response:
                         {message}
 
@@ -522,17 +497,17 @@ class Sia:
                         {conversation}
                         ------------
 
-                        Your response must be unique and creative.  It must also be drastically different from your previous messages.
+                        Your response must be unique and creative. It must also be drastically different from your previous messages.
 
                         It must still be consistent with your personality, mood, core objective and means for achieving it.
-                    """.replace("                        ", "")
+                    """.replace("                ", "")
                     +
                     ("""
                         Some of your previous messages:
                         ------------
                         {previous_messages}
                         ------------
-                    """.replace("                        ", "") if previous_messages else "")
+                    """.replace("                ", "") if previous_messages else "")
                     +
                     ("""
                         Here are your strong opinions:
@@ -540,7 +515,7 @@ class Sia:
                         {opinions}
                         ------------
                         You must adhere to these opinions in your response if they are relevant to the message you are responding to.
-                    """.replace("                        ", "") if self.character.opinions else "")
+                    """.replace("                ", "") if self.character.opinions else "")
                     +
                     ("""
                         ALWAYS REMEMBER: All of your messages must be consistent with your core objective and means for achieving it.
@@ -548,7 +523,7 @@ class Sia:
                         Your core objective is: {core_objective}
                         
                         Your current means for achieving your core objective are: {means_for_achieving_core_objective}
-                    """.replace("                        ", "") if self.character.core_objective else "")
+                    """.replace("                ", "") if self.character.core_objective else "")
                     +
                     """
                         Avoid creating a response that resembles any of your previous ones in how it starts, unfolds and finishes.
@@ -561,7 +536,7 @@ class Sia:
                         - if one of your previous messages continues with an assessment of the situation, your new response must not continue with an assessment of the situation.
                         - if one of your previous messages ends with a question, your new response must not end with a question.
                         - if your previous message is short, your new response must be way longer and vice versa.
-                    """.replace("                        ", "")
+                    """.replace("                ", "")
                 ),
                 (
                     "user",
@@ -579,7 +554,7 @@ class Sia:
                         Your response must be natural continuation of the conversation or the message you are responding to. It must add some value to the conversation.
 
                         Generate your response to the message following the rules and instructions provided above.
-                    """.replace("                        ", ""),
+                    """.replace("                ", ""),
                 ),
             ]
         )
@@ -589,6 +564,7 @@ class Sia:
             "communication_requirements": self.character.prompts.get(
                 "communication_requirements"
             ),
+            "social_memory_str": social_memory_str,
             "instructions": self.character.instructions,
             "opinions": self.character.opinions,
             "platform": platform,
@@ -636,6 +612,24 @@ class Sia:
             self,
             f"Generated response: {generated_response_schema}",
         )
+
+        # After generating response, update social memory
+        if generated_response_schema:
+            # Update social memory with correct platform from message
+            self.memory.update_social_memory(
+                user_id=message.author,
+                platform=message.platform,  # Use message.platform instead of parameter
+                message_id=message.id,
+                content=message.content,
+                role="user"
+            )
+            self.memory.update_social_memory(
+                user_id=message.author,
+                platform=message.platform,  # Use message.platform instead of parameter
+                message_id=generated_response_schema.id,
+                content=generated_response_schema.content,
+                role="assistant"
+            )
 
         return generated_response_schema
 
