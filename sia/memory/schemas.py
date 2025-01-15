@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class SiaMessageGeneratedSchema(BaseModel):
+    id: Optional[str] = None
     conversation_id: Optional[str] = None
     content: str
     platform: str
@@ -16,7 +17,6 @@ class SiaMessageGeneratedSchema(BaseModel):
     message_metadata: Optional[dict] = None
 
     class Config:
-        # orm_mode = True
         from_attributes = True
 
 

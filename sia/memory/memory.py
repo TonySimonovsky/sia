@@ -5,6 +5,8 @@ from typing import List, Dict, Optional
 from sqlalchemy import asc, create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
+from langchain.prompts import ChatPromptTemplate
+from langchain_anthropic import ChatAnthropic
 
 from sia.character import SiaCharacter
 from utils.logging_utils import enable_logging, log_message, setup_logging
@@ -298,6 +300,11 @@ class SiaMemory:
     ) -> SiaSocialMemorySchema:
         with self.session_scope() as session:
             try:
+                # Don't create social memory for the bot itself
+                if user_id == self.character.platform_settings.get(platform, {}).get("username", self.character.name):
+                    log_message(self.logger, "info", self, f"Skipping social memory creation for bot's own message")
+                    return None
+                
                 log_message(self.logger, "info", self, f"Updating social memory for user {user_id} on {platform}")
                 
                 memory = session.query(SiaSocialMemoryModel).filter_by(
@@ -444,3 +451,24 @@ class SiaMemory:
         except Exception as e:
             log_message(self.logger, "error", self, f"Error generating opinion: {e}")
             return previous_opinion or "Unable to form opinion"
+
+    def get_social_memory(self, user_id: str, platform: str) -> Optional[SiaSocialMemorySchema]:
+        """Get social memory for a specific user on a specific platform"""
+        try:
+            with self.session_scope() as session:
+                memory = session.query(SiaSocialMemoryModel).filter_by(
+                    character_name=self.character.name,
+                    user_id=user_id,
+                    platform=platform
+                ).first()
+                
+                if memory:
+                    log_message(self.logger, "info", self, f"Found social memory for user {user_id} on {platform}")
+                    return SiaSocialMemorySchema.from_orm(memory)
+                else:
+                    log_message(self.logger, "info", self, f"No social memory found for user {user_id} on {platform}")
+                    return None
+                
+        except Exception as e:
+            log_message(self.logger, "error", self, f"Error getting social memory: {e}")
+            return None
