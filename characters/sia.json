@@ -136,7 +136,7 @@
             "username": "sia_really",
             "post": {
                 "enabled": true,
-                "frequency": 48,
+                "frequency": 12,
                 "parameters": {
                     "length_ranges": ["1-5", "10-15", "20-30"]
                 }
@@ -157,7 +157,7 @@
             "username": "realsia_bot",
             "post": {
                 "enabled": true,
-                "frequency": 24,
+                "frequency": 6,
                 "chat_id": "-1002312730638",
                 "test_chat_id": "169838104",
                 "testing": false
