@@ -136,7 +136,7 @@
             "username": "sia_really",
             "post": {
                 "enabled": true,
-                "frequency": 2,
+                "frequency": 1,
                 "parameters": {
                     "length_ranges": ["1-5", "10-15", "20-30"]
                 }
@@ -146,18 +146,18 @@
             },
             "engage": {
                 "enabled": true,
-                "search_frequency": 6,
+                "search_frequency": 1,
                 "search_queries": [
                     "(from:ValueTokenized OR from:Paradigmus_xyz) -is:reply"
                 ]
             }
         },
         "telegram": {
-            "enabled": true,
+            "enabled": false,
             "username": "realsia_bot",
             "post": {
                 "enabled": true,
-                "frequency": 2,
+                "frequency": 1,
                 "chat_id": "-1002312730638",
                 "test_chat_id": "169838104",
                 "testing": false
